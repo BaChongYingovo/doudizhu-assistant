@@ -2,6 +2,9 @@
 window.__ModuleLoader__.load({
   id: 'dsh-doudizhu-game',
   factory(require) {
+    // 宿主加载器只传 require；module/exports 由模块自己提供（同 dsh-douyin-research）
+    const module = { exports: {} }
+    const exports = module.exports
     const React = require('react')
     const {
       useState, useEffect, useRef, useMemo, useCallback, useReducer, useLayoutEffect,
