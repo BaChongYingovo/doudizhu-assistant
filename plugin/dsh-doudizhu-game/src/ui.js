@@ -23,7 +23,7 @@ function cardsFromCounts(counts) {
       })
     }
   }
-  out.sort((a, b) => a.rank - b.rank || (a.suit < b.suit ? -1 : 1))
+  out.sort((a, b) => b.rank - a.rank || (a.suit < b.suit ? -1 : 1))
   return out
 }
 
@@ -190,7 +190,7 @@ function Seat(props) {
 function counterBar(st, T, open) {
   const mine = st.hands[0]
   const out = []
-  for (let i = 0; i < 15; i++) {
+  for (let i = 14; i >= 0; i--) {
     const rank = i + 3
     const totalCards = rank >= 16 ? 1 : 4
     const rest = totalCards - (mine[i] || 0) - (st.played[i] || 0)
