@@ -697,7 +697,13 @@
       s -= (m.rank - 3) * (follows ? 0.8 : 0.35);
       if (m.type === 'bomb') s -= urgency ? 0 : 20;
       if (m.type === 'rocket') s -= urgency ? 0 : 28;
-      if (breaksBomb(hand, m)) s -= 24;
+    if (breaksBomb(hand, m)) s -= 24;
+    // 拆牌惩罚：单张拆对/拆三要付出代价
+    if (m.type === 'single' || m.type === 'pair') {
+      const same = hand[m.rank - 3];
+      const bulk = m.type === 'single' ? 1 : 2;
+      if (same > bulk) s -= (same - bulk) * 5.5;
+    }
       if (restPlan === 0) s += 260;
       if (restPlan === 1) s += 12;
       if (urgency && restPlan <= 1) s += 30;

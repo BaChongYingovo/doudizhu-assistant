@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     /* ================= 1. 牌型引擎（纯逻辑） ================= */
     const __engine = { exports: {} }
     ;(function (module, exports) {
-/*!
+﻿/*!
  * 斗地主军师 · 牌局引擎
  * 只按点数建模（花色不影响斗地主牌型），一副牌 54 张。
  * 点数：3..15 为 3..2，16 小王，17 大王
@@ -150,11 +150,15 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // 四带二
+    // 四带二（带双王不算合法四带二，与 rlcard 一致）
     const four = g.find(x => x.k === 4);
     if (four) {
       const rest = g.filter(x => x !== four);
-      if (n === 6 && rest.length === 2 && rest[0].k === 1 && rest[1].k === 1) return mk('four2', four.r, 1);
+      const jokers = rest.length === 2 && rest[0].k === 1 && rest[1].k === 1 &&
+        rest[0].r + rest[1].r === 33;
+      if (n === 6 && rest.length === 2 && rest[0].k === 1 && rest[1].k === 1) {
+        return jokers ? null : mk('four2', four.r, 1);
+      }
       if (n === 6 && rest.length === 1 && rest[0].k === 2) return mk('four2', four.r, 1);
       if (n === 8 && rest.length === 2 && rest[0].k === 2 && rest[1].k === 2) return mk('four2pair', four.r, 1);
     }
@@ -175,7 +179,17 @@ window.__ModuleLoader__.load({
         if (wingPairs) {
           for (let i = 0; i < N; i++) if (restC[i] !== 0 && restC[i] !== 2) { okWing = false; break; }
         } else {
-          for (let i = 0; i < N; i++) if (restC[i] > 2) { okWing = false; break; }
+          // rlcard 允许单翅膀同点多达 3 张（4 张会成炸，不允许）
+          for (let i = 0; i < N; i++) if (restC[i] > 3) { okWing = false; break; }
+          // 双王不能同时当翅膀
+          if (restC[13] === 1 && restC[14] === 1) okWing = false;
+          // 与飞机相邻的点数若当翅膀，最多 2 张（3 张会并成更长的飞机；2 除外）
+          if (okWing) {
+            for (const r of [start - 1, start + k]) {
+              if (r < 3 || r > 15 || r === 15) continue;
+              if (restC[r - 3] === 3) { okWing = false; break; }
+            }
+          }
         }
         if (okWing) return mk(wingPairs ? 'plane2' : 'plane1', start, k);
       }
@@ -198,26 +212,46 @@ window.__ModuleLoader__.load({
   /* ---------------- 出牌生成 ---------------- */
 
   function comboRanks(c, wantPairs, count, limit) {
-    // 从剩余手牌里挑 count 个「不同点数」，优先低点数、优先已有对子/单张少的
     const cand = [];
     for (let i = 0; i < N; i++) {
-      if (wantPairs) { if (c[i] >= 2) cand.push({ r: i + 3, n: c[i] }); }
-      else if (c[i] > 0) cand.push({ r: i + 3, n: c[i] });
+      if (wantPairs) { if (c[i] >= 2) cand.push(i + 3); }
+      else if (c[i] > 0) cand.push(i + 3);
     }
-    cand.sort((a, b) => a.n - b.n || a.r - b.r);
-    const pick = cand.slice(0, Math.min(cand.length, Math.max(count, limit || count)));
     const out = [];
+    const cap = limit || 4096;
     const recursion = (start, acc) => {
-      if (out.length >= (limit || 8)) return;
+      if (out.length >= cap) return;
       if (acc.length === count) { out.push(acc.slice()); return; }
-      for (let i = start; i < pick.length; i++) {
-        acc.push(pick[i].r);
+      for (let i = start; i < cand.length; i++) {
+        acc.push(cand[i]);
         recursion(i + 1, acc);
         acc.pop();
-        if (out.length >= (limit || 8)) return;
+        if (out.length >= cap) return;
       }
     };
     recursion(0, []);
+    return out;
+  }
+
+  // 单牌翅膀：允许同点数重复（最多 maxPerRank 张，4 张会成炸故不允许）
+  function wingRanks(c, count, maxPerRank) {
+    const out = [];
+    const acc = [];
+    const cap = 2048;
+    const dfs = start => {
+      if (out.length >= cap) return;
+      if (acc.length === count) { out.push(acc.slice()); return; }
+      for (let i = start; i < N; i++) {
+        const m = Math.min(c[i], maxPerRank, count - acc.length);
+        for (let take = 1; take <= m; take++) {
+          for (let t = 0; t < take; t++) acc.push(i + 3);
+          dfs(i + 1);
+          for (let t = 0; t < take; t++) acc.pop();
+          if (out.length >= cap) return;
+        }
+      }
+    };
+    if (count > 0) dfs(0);
     return out;
   }
 
@@ -248,17 +282,17 @@ window.__ModuleLoader__.load({
       if (c[i] < 3) continue;
       const r = i + 3, trio = [r, r, r];
       const rest = c.slice(); rest[i] -= 3;
-      comboRanks(rest, false, 1, 3).forEach(w => add(trio.concat(w)));
-      comboRanks(rest, true, 1, 3).forEach(w => add(trio.concat(w, w)));
+      comboRanks(rest, false, 1).forEach(w => add(trio.concat(w)));
+      comboRanks(rest, true, 1).forEach(w => add(trio.concat(w, w)));
     }
 
-    // 四带二
+    // 四带二（单翅膀允许同点成对；对翅膀需两个不同对）
     for (let i = 0; i < N; i++) {
       if (c[i] !== 4) continue;
       const r = i + 3, q = [r, r, r, r];
       const rest = c.slice(); rest[i] = 0;
-      comboRanks(rest, false, 2, 4).forEach(w => add(q.concat(w)));
-      comboRanks(rest, true, 2, 4).forEach(w => add(q.concat(w, w)));
+      wingRanks(rest, 2, 3).forEach(w => add(q.concat(w)));
+      comboRanks(rest, true, 2).forEach(w => add(q.concat(w[0], w[0], w[1], w[1])));
     }
 
     // 顺子
@@ -287,8 +321,8 @@ window.__ModuleLoader__.load({
         for (let r = s; r < s + len; r++) main.push(r, r, r);
         add(main);
         const rest = minus(c, main);
-        comboRanks(rest, false, len, 12).forEach(w => add(main.concat(w)));
-        comboRanks(rest, true, len, 12).forEach(w => add(main.concat(...w.map(x => [x, x]))));
+        wingRanks(rest, len, 3).forEach(w => add(main.concat(w)));
+        comboRanks(rest, true, len).forEach(w => add(main.concat(...w.map(x => [x, x]))));
       }
     }
 
@@ -679,7 +713,13 @@ window.__ModuleLoader__.load({
       s -= (m.rank - 3) * (follows ? 0.8 : 0.35);
       if (m.type === 'bomb') s -= urgency ? 0 : 20;
       if (m.type === 'rocket') s -= urgency ? 0 : 28;
-      if (breaksBomb(hand, m)) s -= 24;
+    if (breaksBomb(hand, m)) s -= 24;
+    // 拆牌惩罚：单张拆对/拆三要付出代价
+    if (m.type === 'single' || m.type === 'pair') {
+      const same = hand[m.rank - 3];
+      const bulk = m.type === 'single' ? 1 : 2;
+      if (same > bulk) s -= (same - bulk) * 5.5;
+    }
       if (restPlan === 0) s += 260;
       if (restPlan === 1) s += 12;
       if (urgency && restPlan <= 1) s += 30;
