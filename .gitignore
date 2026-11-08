@@ -1,0 +1,12 @@
+# 本地调试产物
+dbg.js
+dbg2.js
+out-dom.html
+test-*.html
+push.txt
+shots/
+*.log
+
+# 系统
+Thumbs.db
+.DS_Store
