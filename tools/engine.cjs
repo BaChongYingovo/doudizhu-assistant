@@ -6,7 +6,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SRC = path.join(__dirname, '..', 'plugin', 'dsh-doudizhu-game', 'src', 'engine.js');
+// 默认加载插件的 src/engine.js；设 DDZ_ENGINE=<绝对/相对路径> 可切到别的引擎做 A/B。
+const SRC = process.env.DDZ_ENGINE
+  ? path.resolve(process.env.DDZ_ENGINE)
+  : path.join(__dirname, '..', 'plugin', 'dsh-doudizhu-game', 'src', 'engine.js');
 const code = fs.readFileSync(SRC, 'utf8');
 
 const shim = { exports: {} };
