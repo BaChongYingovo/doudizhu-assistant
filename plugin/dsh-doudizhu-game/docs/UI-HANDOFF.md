@@ -3,9 +3,9 @@
 用途：重做界面视觉 / 布局时，这份文档说明**现有界面有哪些东西、每个东西显示什么数据、点了会干什么**。
 功能逻辑已经跑通，重设计只改「看」的部分，不要改状态机和动作逻辑。
 
-- 插件目录：`C:\Users\sinco\Documents\deepseek-harness\skill\doudizhu\plugin\dsh-doudizhu-game`
+- 插件目录：仓库内的 `plugin/dsh-doudizhu-game`
 - 源文件：`src/ui.js`（组件）、`src/style.js`（CSS 字符串）、`src/i18n.js`（中英文案）、`src/game.js`（规则）、`src/engine.js`（七档出牌引擎）
-- 构建：`node build.mjs` → 生成 `client.js`；装到 `C:\Users\sinco\.dsh\plugins\dsh-doudizhu-game\client.js` 后**重启 DSH** 才生效（插件是启动时内嵌加载，没有热更新）
+- 构建：`node build.mjs` → 生成 `client.js`；装到 `~/.dsh/plugins/dsh-doudizhu-game/client.js` 后**重启 DSH** 才生效（插件是启动时内嵌加载，没有热更新）
 
 ---
 
