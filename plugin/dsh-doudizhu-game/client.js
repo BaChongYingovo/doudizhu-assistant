@@ -1443,6 +1443,7 @@ const I18N = {
     counter: '记牌器',
     lastPlay: '桌上',
     noPlay: '还没有人出牌',
+    bottomCards: '底牌',
     you: '你',
     landlordTag: '地主',
     farmerTag: '农民',
@@ -1543,6 +1544,7 @@ const I18N = {
     counter: 'Card counter',
     lastPlay: 'On table',
     noPlay: 'Nothing played yet',
+    bottomCards: 'Bottom',
     you: 'You',
     landlordTag: 'Landlord',
     farmerTag: 'Farmer',
@@ -1622,13 +1624,47 @@ const CSS = String.raw`
   min-height: 0;
   overflow: hidden;
   color: var(--ddz-text);
-  background: var(--ddz-bg);
-  background-image: var(--ddz-felt);
+  background-color: var(--ddz-bg);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.36 0 0 0 0 0.62 0 0 0 0.2 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.28) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(75,163,227,.06) 0 1px, transparent 1px 5px),
+    var(--ddz-felt);
+  background-size: 128px 128px, auto, auto, auto;
   font: 13px/1.45 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 .ddz-root * { box-sizing: border-box; }
-.ddz-scroll { overflow: auto; min-height: 0; }
+.ddz-scroll { overflow: auto; min-height: 0; position: relative; z-index: 1; }
+.ddz-decor { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.ddz-watermark {
+  position: absolute; left: 50%; top: 46%;
+  width: min(300px, 46%); height: min(300px, 46%);
+  transform: translate(-50%, -46%);
+  border-radius: 50%; object-fit: cover; opacity: .14;
+}
+.ddz-stamp {
+  position: absolute; width: 58px; height: 58px; border-radius: 50%;
+  object-fit: cover; opacity: .28;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.35);
+}
+.ddz-stamp.s1 { left: 12px; bottom: 18px; transform: rotate(-8deg); }
+.ddz-stamp.s2 { right: 16px; top: 58px; width: 46px; height: 46px; transform: rotate(10deg); }
+.ddz-bubble {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff 0 18%, rgba(126,200,232,.72) 42%, rgba(75,163,227,.08) 68%, transparent 70%);
+}
+.ddz-bubble.d1 { width: 84px; height: 84px; left: -18px; top: 72px; }
+.ddz-bubble.d2 { width: 42px; height: 42px; left: 46px; top: 54px; opacity: .85; }
+.ddz-bubble.d3 { width: 96px; height: 96px; right: -24px; bottom: 36px; }
+.ddz-bubble.d4 { width: 34px; height: 34px; right: 72px; bottom: 22px; opacity: .9; }
+.ddz-whale {
+  position: absolute; font-size: 22px; line-height: 1; opacity: .62;
+  filter: drop-shadow(0 1px 0 #fff);
+}
+.ddz-whale.w1 { left: 78px; bottom: 26px; transform: rotate(-14deg); }
+.ddz-whale.w2 { right: 22px; top: 112px; font-size: 18px; transform: rotate(12deg); }
+.ddz-topbar, .ddz-counterbar, .ddz-table { position: relative; z-index: 1; }
 
 /* ---------- 顶栏 ---------- */
 .ddz-topbar {
@@ -1661,7 +1697,7 @@ const CSS = String.raw`
 
 /* ---------- 按钮 / 分段 ---------- */
 .ddz-btn {
-  height: 34px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+  height: 40px; padding: 0 16px; border-radius: 12px; cursor: pointer;
   border: 1px solid var(--ddz-line-strong); background: rgba(255,255,255,.9);
   color: var(--ddz-text); font-size: 13px; font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(30, 79, 156, .05);
@@ -1670,10 +1706,12 @@ const CSS = String.raw`
 .ddz-btn:hover { border-color: var(--ddz-accent); }
 .ddz-btn:active { transform: translateY(1px); }
 .ddz-btn.primary {
+  height: 44px; font-size: 15px;
   background: linear-gradient(180deg, #8FD0F2 0%, #4BA3E3 46%, #1E4F9C 100%);
   border-color: #1E4F9C; color: #fff;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 6px 14px rgba(30, 79, 156, .22);
 }
+.ddz-actions .ddz-btn.primary { height: 48px; min-width: 108px; font-size: 17px; letter-spacing: .6px; padding: 0 22px; }
 .ddz-btn.primary:hover { background: linear-gradient(180deg, #a6dcf6 0%, #5eb0ea 46%, #255cae 100%); }
 .ddz-btn.ghost { background: transparent; box-shadow: none; }
 .ddz-btn.danger {
@@ -1729,10 +1767,10 @@ const CSS = String.raw`
 
 /* ---------- 牌桌 ---------- */
 .ddz-table { position: relative; flex: 1; min-height: 0; display: grid; grid-template-rows: auto 1fr auto; }
-.ddz-seatrow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 16px 8px; }
-.ddz-mid-pill { flex: 1; display: flex; justify-content: center; min-width: 0; padding-top: 8px; }
+.ddz-seatrow { display: flex; justify-content: space-between; align-items: stretch; gap: 8px; padding: 8px 12px 4px; }
+.ddz-mid-pill { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; }
 .ddz-seat {
-  min-width: 148px; padding: 8px 12px 8px 8px; border-radius: 18px;
+  min-width: 188px; padding: 10px 14px 10px 10px; border-radius: 18px;
   border: 1px solid var(--ddz-line); background: var(--ddz-panel); backdrop-filter: blur(8px);
   display: flex; align-items: center; gap: 10px;
   box-shadow: 0 8px 18px rgba(30, 79, 156, .05);
@@ -1753,12 +1791,12 @@ const CSS = String.raw`
   50% { box-shadow: 0 0 0 4px rgba(126, 200, 232, .45), 0 10px 24px rgba(75, 163, 227, .28); }
 }
 .ddz-avatar {
-  width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px;
+  width: 52px; height: 52px; border-radius: 50%; flex: 0 0 52px;
   background: #fff; position: relative;
   border: 2px solid #7EC8E8;
   box-shadow: 0 4px 10px rgba(30, 79, 156, .12);
 }
-.ddz-seat.seat-0 .ddz-avatar { width: 48px; height: 48px; flex-basis: 48px; border-color: #4BA3E3; }
+.ddz-seat.seat-0 .ddz-avatar { width: 60px; height: 60px; flex-basis: 60px; border-color: #4BA3E3; }
 .ddz-seat.seat-1 .ddz-avatar { border-color: #7EC8E8; }
 .ddz-seat.seat-2 .ddz-avatar { border-color: #8AA4D4; }
 .ddz-seat .ddz-avatar.landlord {
@@ -1782,8 +1820,8 @@ const CSS = String.raw`
 }
 .ddz-seat.is-me .ddz-avatar .crown { font-size: 22px; top: -16px; }
 .ddz-seat .meta { min-width: 0; }
-.ddz-seat .name { font-size: 12.5px; font-weight: 700; white-space: nowrap; color: #1B2A44; }
-.ddz-seat .sub2 { font-size: 11px; color: var(--ddz-dim); white-space: nowrap; }
+.ddz-seat .name { font-size: 14px; font-weight: 800; white-space: nowrap; color: #1B2A44; }
+.ddz-seat .sub2 { font-size: 12px; color: var(--ddz-dim); white-space: nowrap; margin-top: 2px; }
 .ddz-seat .sub2 em { font-style: normal; color: var(--ddz-accent); font-weight: 700; }
 .landlord-tag {
   display: inline-flex; align-items: center; margin-left: 4px; padding: 0 6px; height: 16px;
@@ -1797,12 +1835,48 @@ const CSS = String.raw`
 .ddz-ring .bg { stroke: rgba(30, 79, 156, .12); }
 .ddz-ring .fg { stroke: var(--ddz-accent); transition: stroke-dashoffset .5s linear; }
 
-.ddz-mid { position: relative; display: grid; place-items: center; min-height: 0; }
-.ddz-mid-inner { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.ddz-lastlabel { color: var(--ddz-dim); font-size: 11.5px; letter-spacing: .4px; }
+.ddz-mid {
+  position: relative; display: flex; min-height: 0; margin: 4px 12px 0;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,.55), rgba(255,255,255,.18) 58%, rgba(126,200,232,.12));
+  border: 1px solid rgba(126, 200, 232, .45);
+  box-shadow: inset 0 0 0 5px rgba(255,255,255,.28), 0 8px 18px rgba(30, 79, 156, .04);
+  overflow: hidden;
+}
+.ddz-mid .ddz-watermark { width: 240px; height: 240px; opacity: .16; }
+.ddz-mid-inner {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 8px; width: 100%; height: 100%; min-height: 0; padding: 10px 12px 12px;
+}
+.ddz-infobar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; width: 100%; }
+.ddz-pill {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+  border-radius: 999px; background: rgba(255,255,255,.92);
+  border: 1px solid rgba(75, 163, 227, .32);
+  color: #1E4F9C; font-size: 12.5px; font-weight: 800;
+  box-shadow: 0 3px 8px rgba(30, 79, 156, .06);
+}
+.ddz-pill.is-phase { background: linear-gradient(180deg, #5eb0ea, #1E4F9C); color: #fff; border-color: #1E4F9C; }
+.ddz-pill.is-gold { background: linear-gradient(180deg, #fff8e4, #f3d48a); color: #7A5A16; border-color: rgba(212, 168, 75, .7); }
+.ddz-pill.is-mult { background: linear-gradient(180deg, #e7f6ff, #fff); border-color: #4BA3E3; }
+.ddz-kitty {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 12px; border-radius: 16px;
+  background: rgba(255,255,255,.82); border: 1px solid rgba(212, 168, 75, .45);
+  box-shadow: 0 4px 12px rgba(212, 168, 75, .08);
+}
+.ddz-kitty .ddz-lastlabel { color: #7A5A16; font-weight: 800; }
+.ddz-kitty-cards { display: flex; align-items: flex-end; min-height: 52px; }
+.ddz-lastlabel { color: var(--ddz-dim); font-size: 12px; letter-spacing: .4px; font-weight: 700; }
 .ddz-played {
-  display: flex; gap: 4px; min-height: 58px; align-items: center; justify-content: center;
-  padding: 4px 6px; border-radius: 16px;
+  display: flex; gap: 4px; flex: 1; width: min(100%, 760px); min-height: 96px;
+  align-items: center; justify-content: center;
+  padding: 8px 12px; border-radius: 18px;
+  background: rgba(255,255,255,.62);
+  border: 1px dashed rgba(75, 163, 227, .45);
+  box-shadow: inset 0 0 18px rgba(126, 200, 232, .16);
 }
 .ddz-played.is-bomb { animation: ddz-bombflash .72s ease 1; }
 @keyframes ddz-bombflash {
@@ -1842,23 +1916,25 @@ const CSS = String.raw`
 }
 
 /* ---------- 底部：手牌区 ---------- */
-.ddz-bottom { display: grid; grid-template-columns: 210px 1fr 250px; gap: 12px; padding: 10px 16px 14px; align-items: end; }
+.ddz-bottom { display: grid; grid-template-columns: minmax(196px, 228px) minmax(0, 1fr) minmax(210px, 268px); gap: 8px; padding: 8px 12px 10px; align-items: end; }
 .ddz-meseat { display: flex; align-items: flex-end; min-width: 0; }
 .ddz-meseat .ddz-seat { width: 100%; }
 .ddz-counterbar {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
-  margin: 6px 16px 0; padding: 6px 8px;
-  border: 1px solid var(--ddz-line); border-radius: 14px;
-  background: rgba(255,255,255,.72);
-  box-shadow: 0 6px 16px rgba(30, 79, 156, .04);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 12px 0; padding: 8px 10px;
+  border: 1px solid var(--ddz-line); border-radius: 16px;
+  background: rgba(255,255,255,.8);
+  box-shadow: 0 6px 16px rgba(30, 79, 156, .05);
 }
-.ddz-counterbar .ct { font-size: 11px; color: #1E4F9C; font-weight: 700; margin-right: 4px; white-space: nowrap; }
+.ddz-counterbar .ct { font-size: 12px; color: #1E4F9C; font-weight: 800; margin-right: 2px; white-space: nowrap; }
 .ddz-count {
-  display: inline-flex; align-items: baseline; justify-content: center; gap: 3px;
-  min-width: 32px; padding: 2px 6px; border-radius: 8px; background: rgba(75, 163, 227, .08);
-  font-size: 12px; line-height: 1.25; color: var(--ddz-text);
+  display: inline-flex; align-items: baseline; justify-content: center; gap: 4px;
+  min-width: 46px; padding: 6px 8px; border-radius: 11px;
+  background: #fff; border: 1px solid rgba(75, 163, 227, .2);
+  font-size: 13px; font-weight: 800; line-height: 1.2; color: var(--ddz-text);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(30, 79, 156, .04);
 }
-.ddz-count b { font-size: 11px; color: var(--ddz-dim); font-weight: 600; }
+.ddz-count b { font-size: 13px; color: #1E4F9C; font-weight: 800; }
 .ddz-count.is-hot { background: rgba(240, 113, 120, .14); color: var(--ddz-bad); }
 .ddz-count.is-hot b { color: var(--ddz-bad); }
 .ddz-count.is-zero { opacity: .38; }
@@ -1866,7 +1942,7 @@ const CSS = String.raw`
 .ddz-handwrap { min-width: 0; }
 .ddz-hand { display: flex; justify-content: center; align-items: flex-end; min-height: 96px; padding: 20px 4px 0; }
 .ddz-card {
-  position: relative; width: 48px; height: 70px; margin-left: -16px; flex: 0 0 48px;
+  position: relative; width: 48px; height: 70px; margin-left: -20px; flex: 0 0 48px;
   border-radius: 13px;
   background:
     linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.35) 42%, rgba(180, 210, 235, .2) 100%),
@@ -1928,8 +2004,9 @@ const CSS = String.raw`
 }
 .ddz-handinfo { text-align: center; color: var(--ddz-dim); font-size: 11.5px; margin-top: 6px; min-height: 16px; }
 
-.ddz-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
-.ddz-actions-row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.ddz-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.ddz-actions-row { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.ddz-actions-row .ddz-btn.primary { flex: 1.4; }
 .ddz-advice {
   border: 1px solid rgba(126, 200, 232, .55); border-radius: 16px; padding: 9px 11px;
   background: linear-gradient(180deg, rgba(126, 200, 232, .22), rgba(255,255,255,.72));
@@ -2026,9 +2103,12 @@ const CSS = String.raw`
   .ddz-hand { min-height: 84px; padding-top: 16px; }
   .ddz-card { width: 40px; height: 58px; flex-basis: 40px; margin-left: -16px; border-radius: 12px; }
   .ddz-seatrow { padding: 8px 10px; }
-  .ddz-seat { min-width: 0; padding: 7px 9px; }
+  .ddz-seat { min-width: 0; padding: 8px 10px; }
   .ddz-seat .sub2 { display: none; }
-  .ddz-seat.seat-0 .ddz-avatar { width: 42px; height: 42px; flex-basis: 42px; }
+  .ddz-avatar { width: 44px; height: 44px; flex-basis: 44px; }
+  .ddz-seat.seat-0 .ddz-avatar { width: 50px; height: 50px; flex-basis: 50px; }
+  .ddz-watermark { width: 180px; height: 180px; }
+  .ddz-actions .ddz-btn.primary { width: 100%; }
   .ddz-setup { padding: 18px 14px 30px; }
   .ddz-tiers { grid-template-columns: 1fr; }
   .ddz-hero-avatar { width: 56px; height: 56px; flex-basis: 56px; }
@@ -2075,6 +2155,29 @@ function fmt(tpl, vars) {
 }
 
 function tierLabel(tier, T) { return (T.tierNames && T.tierNames[tier]) || tier }
+
+function liveMult(st) {
+  if (st.result && typeof st.result.multiplier === 'number') return st.result.multiplier
+  let mult = st.base || 1
+  const doubling = st.doubling || [1, 1, 1]
+  for (let s = 0; s < 3; s++) mult *= doubling[s] || 1
+  const open = st.open || []
+  for (let s = 0; s < 3; s++) if (open[s]) mult *= 2
+  for (let i = 0; i < (st.bombs || 0); i++) mult *= 2
+  return mult
+}
+
+function Decor() {
+  return h('div', { className: 'ddz-decor', 'aria-hidden': 'true' },
+    h('span', { className: 'ddz-bubble d1' }),
+    h('span', { className: 'ddz-bubble d2' }),
+    h('span', { className: 'ddz-bubble d3' }),
+    h('span', { className: 'ddz-bubble d4' }),
+    h('img', { className: 'ddz-stamp s1', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
+    h('img', { className: 'ddz-stamp s2', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
+    h('span', { className: 'ddz-whale w1' }, '🐳'),
+    h('span', { className: 'ddz-whale w2' }, '🐋'))
+}
 
 /* ---------------- 牌 ---------------- */
 
@@ -2587,6 +2690,7 @@ function PanelView() {
 
   /* -------- 渲染 -------- */
   const setupView = () => h('div', { className: 'ddz-root' },
+    h(Decor),
     topbar(),
     h('div', { className: 'ddz-scroll' },
       h('div', { className: 'ddz-setup' },
@@ -2638,21 +2742,41 @@ function PanelView() {
     const playSerial = st.playCounts ? st.playCounts[0] + st.playCounts[1] + st.playCounts[2] : 0
     const playKey = st.last ? playSerial + '-' + st.last.seat : 'empty'
     const bidders = st.phase === 'bid' ? G.bidSeat(st) : -1
-    const openAll = st.open[0] || st.open[1] || st.open[2]
+    const whoName = (seat) => seat === 0 ? T.you : seat === 1 ? T.downTier : T.upTier
+    let phaseText = T.playing
+    if (st.phase === 'bid') phaseText = fmt(T.bidTurn, { who: whoName(bidders) })
+    else if (st.phase === 'double') phaseText = T.doubleTurn
+    else if (st.phase === 'play') phaseText = myTurn ? (auto ? T.autoOn : T.yourTurn) : fmt(T.thinking, { tier: tierLabel((st.tiers && st.tiers[st.turn]) || 'go', T) })
+    else if (st.phase === 'redeal') phaseText = T.bidAllPass
+    else if (st.phase === 'over') phaseText = st.winners === 'landlord' ? T.winLandlord : T.winFarmer
+    const kittyFace = st.landlord >= 0 && st.phase !== 'bid' && st.phase !== 'redeal'
+    const kittyCards = kittyFace ? cardsFromCounts(st.bottom || []) : []
+    const openN = (st.open || []).filter(Boolean).length
     return h('div', { className: 'ddz-root' },
+      h(Decor),
       topbar(),
       counterOpen ? counterBar() : null,
       h('div', { className: 'ddz-table' },
         h('div', { className: 'ddz-seatrow' },
           h(Seat, { st, seat: 2, T, lang, remain, isTurn: st.phase === 'play' && st.turn === 2 || bidders === 2 }),
-          h('div', { className: 'ddz-mid-pill' },
-            st.phase === 'bid' ? h('div', { className: 'ddz-turnpill' }, fmt(T.bidTurn, { who: bidders === 0 ? T.you : bidders === 1 ? T.downTier : T.upTier }))
-              : st.phase === 'double' ? h('div', { className: 'ddz-turnpill' }, T.doubleTurn)
-                : st.landlord >= 0 ? h('div', { className: 'ddz-turnpill' }, fmt(T.landlordIs, { who: st.landlord === 0 ? T.you : st.landlord === 1 ? T.downTier : T.upTier }))
-                  : null),
           h(Seat, { st, seat: 1, T, lang, remain, isTurn: st.phase === 'play' && st.turn === 1 || bidders === 1 })),
         h('div', { className: 'ddz-mid' },
+          h('img', { className: 'ddz-watermark', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
           h('div', { className: 'ddz-mid-inner' },
+            h('div', { className: 'ddz-infobar' },
+              h('span', { className: 'ddz-pill is-phase' }, phaseText),
+              st.landlord >= 0 ? h('span', { className: 'ddz-pill is-gold' }, fmt(T.landlordIs, { who: whoName(st.landlord) })) : null,
+              st.mode === 'score' && st.bidHigh > 0 ? h('span', { className: 'ddz-pill' }, st.bidHigh + '分') : null,
+              st.mode === 'rob' && st.landlord >= 0 ? h('span', { className: 'ddz-pill' }, T.modeRob) : null,
+              h('span', { className: 'ddz-pill is-mult' }, fmt(T.multiplier, { n: liveMult(st) })),
+              h('span', { className: 'ddz-pill' }, fmt(T.bombs, { n: st.bombs || 0 })),
+              openN ? h('span', { className: 'ddz-pill' }, T.openOn + (openN > 1 ? ' ×' + openN : '')) : null),
+            h('div', { className: 'ddz-kitty' },
+              h('span', { className: 'ddz-lastlabel' }, T.bottomCards),
+              h('div', { className: 'ddz-kitty-cards' },
+                kittyFace && kittyCards.length
+                  ? kittyCards.map(c => h(Card, { key: 'k' + c.id, card: c, small: true, static: true }))
+                  : [0, 1, 2].map(i => h(Card, { key: 'kb' + i, back: true, small: true, static: true })))),
             h('div', { className: 'ddz-lastlabel' }, st.last ? T.lastPlay : T.noPlay),
             h('div', {
               key: 'played-' + playKey,
@@ -2682,8 +2806,7 @@ function PanelView() {
               h('button', { className: 'ddz-btn', onClick: askAdvice, disabled: !myTurn || auto }, T.advice),
               h('button', { className: 'ddz-btn', onClick: () => { setAuto(v => !v); toastMsg(!auto ? T.autoOn : T.auto) }, }, auto ? T.autoOn : T.auto),
               h('button', { className: 'ddz-btn danger', onClick: () => setModal('surrender'), disabled: st.phase !== 'play' }, T.surrender)),
-            adviceCard()),
-          h('div', null))),
+            adviceCard()))),
       toastEl(),
       modal === 'result' && st.result ? h(Result, {
         st, T,
