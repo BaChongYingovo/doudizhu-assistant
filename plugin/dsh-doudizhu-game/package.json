@@ -2,6 +2,12 @@
   "name": "dsh-doudizhu-game",
   "version": "0.1.0",
   "description": "斗地主：在 DSH 里人机对战，三家分别选七档难度，带记牌器、出牌建议、叫抢/加倍/明牌、完整结算与复盘。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BaChongYingovo/doudizhu-assistant.git",
+    "directory": "plugin/dsh-doudizhu-game"
+  },
+  "homepage": "https://github.com/BaChongYingovo/doudizhu-assistant#readme",
   "license": "MIT",
   "type": "module",
   "main": "lib/index.js",

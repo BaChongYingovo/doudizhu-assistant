@@ -55,7 +55,7 @@ node test/check-keys.mjs     # 文案与 API 引用检查
 ## 结构
 
 ```
-src/engine.js   牌型识别、出牌生成、七档 advise（从 doudizhu/engine.js 拷贝）
+src/engine.js   牌型识别、出牌生成、七档 advise
 src/game.js     规则核心 GameCore(DDZ)：状态机、叫分/加倍/明牌、结算、AI 走子
 src/i18n.js     中英双语文案
 src/style.js    样式（跟随 DSH 深浅色）

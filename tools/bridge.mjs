@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const DDZ = require('../engine.js');
+const DDZ = require('./engine.cjs');
 
 const PORT = Number(process.argv[2] || 8791);
 const RC = {

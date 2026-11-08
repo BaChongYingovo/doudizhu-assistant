@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>斗地主插件 · UI 预览</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #E9EFF7; }
+  #root { height: 100%; }
+</style>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* 最小宿主：模拟 DSH 的 __ModuleLoader__ 与 slots 服务，
+   把插件的 PanelView 直接挂到页面上，用来在浏览器里改样式、截图。
+   用法：任意静态服务器打开本文件（需要联网取 React）。 */
+(function () {
+  var captured = {}
+  var slots = {
+    inject: function (name, fn) { fn(); return function () {} },
+    register: function (cfg, comp) {
+      captured[cfg.name + (cfg.key ? '#' + cfg.key : '')] = comp
+      return function () {}
+    },
+  }
+  window.module = { exports: {} }
+  window.exports = window.module.exports
+  window.__ModuleLoader__ = {
+    load: function (spec) {
+      var mod = spec.factory(function (name) { return name === 'react' ? window.React : undefined })
+      mod.apply({
+        get: function () { return slots },
+        effect: function (fn) { fn(); return function () {} },
+      })
+      var Panel = captured['main#doudizhu']
+      if (!Panel) throw new Error('没有拿到 main 槽组件')
+      window.__PANEL__ = Panel
+      window.ReactDOM.createRoot(document.getElementById('root'))
+        .render(window.React.createElement(Panel))
+    },
+  }
+})()
+</script>
+<script src="../plugin/dsh-doudizhu-game/client.js"></script>
+</body>
+</html>
