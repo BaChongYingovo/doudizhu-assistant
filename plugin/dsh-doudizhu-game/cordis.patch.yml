@@ -1,0 +1,7 @@
+# dsh-doudizhu-game profile patch layer —— one loader entry for the plugin.
+#
+# 纯客户端插件：Host 侧没有服务要起，面板与「更多」菜单行都在 Web 客户端里。
+# 配置项由插件自己的 localStorage 管（档位 / 语言 / 音效），这里不需要 config 段。
+- insert:
+    - id: doudizhu
+      name: 'dsh-doudizhu-game'

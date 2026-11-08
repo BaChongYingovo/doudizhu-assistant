@@ -96,9 +96,17 @@
       return null;
     }
 
-    // 三带一 / 三带二
-    if (n === 4 && g[0].k === 3 && g[1].k === 1) return mk('trio1', g[0].r, 1);
-    if (n === 5 && g[0].k === 3 && g[1].k === 2) return mk('trio2', g[0].r, 1);
+    // 三带一 / 三带二（带牌可能比三张本身还小，不能只看 g[0]）
+    if (n === 4) {
+      const t3 = g.find(x => x.k === 3);
+      const wings = g.filter(x => x !== t3);
+      if (t3 && wings.length === 1 && wings[0].k === 1) return mk('trio1', t3.r, 1);
+    }
+    if (n === 5) {
+      const t3 = g.find(x => x.k === 3);
+      const wings = g.filter(x => x !== t3);
+      if (t3 && wings.length === 1 && wings[0].k === 2) return mk('trio2', t3.r, 1);
+    }
 
     // 顺子
     if (n >= 5 && g.length === n && sorted[n - 1] <= 14) {
@@ -570,7 +578,7 @@
    * }
    * 返回 {pass, move, options[], reason, notes[], plan, best}
    */
-  function advise(state) {
+  function heuristicAdvice(state) {
     const hand = state.hand, me = state.me, landlord = state.landlord;
     const last = state.last;
     const follows = !!(last && last.seat !== me);
@@ -736,6 +744,222 @@
     return { pass: false, move: best.m, plan: best.restPlan, options, reason, notes };
   }
 
+  /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 ---------------- */
+
+  const TIERS = ['free', 'go', 'plus', 'pro100', 'pro200', 'pro500', 'pro9999'];
+
+  // 每档的思考预算：budget = 最多推演多少次，ms = 每手最多花多久
+  const TIER_CFG = {
+    free:    { budget: 0,    ms: 0 },
+    go:      { budget: 0,    ms: 0 },
+    plus:    { budget: 12,   ms: 120 },
+    pro100:  { budget: 100,  ms: 500 },
+    pro200:  { budget: 200,  ms: 1000 },
+    pro500:  { budget: 500,  ms: 2000 },
+    pro9999: { budget: 9999, ms: 4000 }
+  };
+
+  function tierOf(t) {
+    if (typeof t === 'number') return TIERS[Math.max(0, Math.min(TIERS.length - 1, t | 0))];
+    if (typeof t === 'string') {
+      const s = t.toLowerCase();
+      if (TIER_CFG[s]) return s;
+    }
+    return 'go';
+  }
+
+  function addCard(c, r) { c[r - 3] = (c[r - 3] || 0) + 1; }
+
+  // 把还没露面的牌随机分给另外两家（推演用）
+  function sampleHands(hand, played, seatCounts, me) {
+    const pool = [];
+    const u = unseen(hand, played);
+    for (let i = 0; i < N; i++) for (let k = 0; k < u[i]; k++) pool.push(i + 3);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+    }
+    const hands = [zero(), zero(), zero()];
+    hands[me] = hand.slice();
+    let p = 0;
+    for (let s = 0; s < 3; s++) {
+      if (s === me) continue;
+      let want = seatCounts[s] || 0;
+      const h = hands[s];
+      while (want-- > 0 && p < pool.length) addCard(h, pool[p++]);
+      while (total(h) < (seatCounts[s] || 0)) addCard(h, 3 + Math.floor(Math.random() * 15));
+    }
+    return hands;
+  }
+
+  // 推演里各家用同一套轻量策略
+  function policyMove(hand, ctx) {
+    const last = ctx.last;
+    const follows = !!(last && last.seat !== ctx.me);
+    const lm = last ? last.move : null;
+    const isMate = follows && ctx.landlord !== ctx.me && last.seat !== ctx.landlord;
+    if (isMate) {
+      const fin = generateMoves(hand, lm).find(m => total(minus(hand, m.cards)) === 0);
+      return fin ? { move: fin } : { pass: true };
+    }
+    const moves = generateMoves(hand, lm);
+    if (!moves.length) return { pass: true };
+    const urgency = ctx.landlord === ctx.me
+      ? ctx.seatCounts.some((n, s) => s !== ctx.me && n <= 2)
+      : ctx.seatCounts[ctx.landlord] <= 2;
+    let best = null, bs = -1e9;
+    for (const m of moves) {
+      const rest = minus(hand, m.cards);
+      const rp = planCount(rest);
+      let s = -rp * 12 - (m.rank - 3) * (follows ? 0.8 : 0.35);
+      if (m.type === 'bomb' || m.type === 'rocket') s -= urgency ? 0 : 26;
+      if (breaksBomb(hand, m)) s -= 24;
+      if (rp === 0) s += 320;
+      if (s > bs) { bs = s; best = m; }
+    }
+    return { move: best };
+  }
+
+  function playout(hands, landlord, turn, lastSeat, lastMove) {
+    let guard = 0, passes = 0;
+    while (guard++ < 400) {
+      if (total(hands[turn]) === 0) return turn;
+      const ctx = {
+        me: turn, landlord,
+        seatCounts: [total(hands[0]), total(hands[1]), total(hands[2])],
+        last: lastMove ? { seat: lastSeat, move: lastMove } : null
+      };
+      const act = policyMove(hands[turn], ctx);
+      if (act.move) {
+        hands[turn] = minus(hands[turn], act.move.cards);
+        lastMove = act.move; lastSeat = turn; passes = 0;
+      } else {
+        passes++;
+        if (passes >= 2) { lastMove = null; lastSeat = -1; passes = 0; }
+      }
+      turn = (turn + 1) % 3;
+    }
+    return -1;
+  }
+
+  // 我下这手（move=null 表示过）的估计胜率
+  function estimate(state, move, samples, deadline) {
+    let wins = 0, done = 0;
+    for (let k = 0; k < samples; k++) {
+      if (deadline && Date.now() > deadline) break;
+      const hands = sampleHands(state.hand, state.played, state.seatCounts, state.me);
+      let lastSeat = -1, lastMove = null;
+      if (move) {
+        hands[state.me] = minus(hands[state.me], move.cards);
+        if (total(hands[state.me]) === 0) { wins++; done++; continue; }
+        lastSeat = state.me; lastMove = move;
+      } else {
+        if (!state.last) continue;  // 领出不能过
+        lastSeat = state.last.seat; lastMove = state.last.move;
+      }
+      const w = playout(hands, state.landlord, (state.me + 1) % 3, lastSeat, lastMove);
+      if (w < 0) continue;
+      done++;
+      const won = state.me === state.landlord ? w === state.me : w !== state.landlord;
+      if (won) wins++;
+    }
+    return { win: done ? wins / done : 0.5, n: done };
+  }
+
+  function cardKey(m) { return m ? m.cards.slice().sort((a, b) => a - b).join(',') : 'pass'; }
+
+  function freeAdvice(state) {
+    const follows = !!(state.last && state.last.seat !== state.me);
+    const lm = follows ? state.last.move : null;
+    const moves = generateMoves(state.hand, lm);
+    const notes = ['free 档：随手打，只顾这一手'];
+    if (!moves.length) {
+      return { pass: true, move: null, plan: planCount(state.hand), reason: '要不起。', options: [], notes, tier: 'free' };
+    }
+    let m;
+    if (Math.random() < 0.55) m = moves[Math.floor(Math.random() * moves.length)];
+    else {
+      let worst = moves[0], wr = -1;
+      for (const x of moves) {
+        const rp = planCount(minus(state.hand, x.cards));
+        if (rp > wr) { wr = rp; worst = x; }
+      }
+      m = worst;
+    }
+    return {
+      pass: false, move: m, plan: planCount(minus(state.hand, m.cards)),
+      reason: '（free 档）随手出：' + describe(m) + '。', options: [], notes, tier: 'free'
+    };
+  }
+
+  function refine(base, state, tier) {
+    const cfg = TIER_CFG[tier] || TIER_CFG.go;
+    const follows = !!(state.last && state.last.seat !== state.me);
+    const deadline = cfg.ms ? Date.now() + cfg.ms : 0;
+    const pool = [];
+    const seen = {};
+    (base.options || []).forEach(o => {
+      const k = cardKey(o.move);
+      if (!seen[k]) { seen[k] = 1; pool.push(o.move); }
+    });
+    if (base.move && !seen[cardKey(base.move)]) { seen[cardKey(base.move)] = 1; pool.unshift(base.move); }
+    if (!pool.length) {
+      const list = pruneCandidates(generateMoves(state.hand, follows ? state.last.move : null));
+      for (const m of list) { const k = cardKey(m); if (!seen[k]) { seen[k] = 1; pool.push(m); } }
+    }
+    const cands = pool.slice(0, cfg.budget >= 200 ? 3 : 4);
+    if (follows) cands.push(null);
+
+    // 轮流给每个候选发推演次数，直到预算或时间用完
+    const stats = cands.map(m => ({ move: m, wins: 0, done: 0 }));
+    let used = 0;
+    while (used < cfg.budget) {
+      if (deadline && Date.now() > deadline) break;
+      for (const st of stats) {
+        if (used >= cfg.budget) break;
+        const r = estimate(state, st.move, 1, 0);
+        st.wins += r.win; st.done++; used++;
+        if (deadline && Date.now() > deadline) break;
+      }
+    }
+
+    const rate = st => st.done ? st.wins / st.done : 0.5;
+    stats.sort((a, b) => rate(b) - rate(a));
+    const top = stats[0];
+    const baseKey = base.pass ? 'pass' : cardKey(base.move);
+    const baseStat = stats.find(x => cardKey(x.move) === baseKey);
+
+    // 推演结论和启发式差得不多时，尊重启发式的牌形判断
+    let chosen = top;
+    if (baseStat && rate(top) - rate(baseStat) < 0.03) chosen = baseStat;
+
+    const winPct = Math.round(rate(chosen) * 100);
+    const simNote = '推演 ' + used + ' 次，估计胜率 ' + winPct + '%';
+
+    if (!chosen.move) {
+      return {
+        pass: true, move: null, plan: base.plan,
+        reason: '（' + tier + ' 档）这手先过：' + simNote + '，压了反而更亏。',
+        options: (base.options || []).slice(0, 4), notes: base.notes.concat([simNote]),
+        tier: tier, win: winPct, sims: used
+      };
+    }
+    return {
+      pass: false, move: chosen.move, plan: planCount(minus(state.hand, chosen.move.cards)),
+      reason: '（' + tier + ' 档）出「' + describe(chosen.move) + '」：' + simNote + '。',
+      options: (base.options || []).slice(0, 4), notes: base.notes.concat([simNote]),
+      tier: tier, win: winPct, sims: used
+    };
+  }
+
+  function advise(state, opts) {
+    const tier = tierOf(opts && opts.tier);
+    if (tier === 'free') return freeAdvice(state);
+    const base = heuristicAdvice(state);
+    if (tier === 'go') { base.tier = 'go'; return base; }
+    return refine(base, state, tier);
+  }
+
   function canBeatProxyForFollow(hand, played, lm) {
     // 我压完之后，对面还有没有更大的
     const u = unseen(hand, played);
@@ -771,7 +995,7 @@
     N, idx, rk, rankName, NAME, TYPE_CN,
     zero, total, countsOf, minus, addCards, cardsOf, fullDeck, shuffled,
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
-    describe, cardsText, breaksBomb, advise, parseCards,
+    describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
     deal, pickLandlord
   };
 });

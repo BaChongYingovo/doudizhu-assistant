@@ -7,6 +7,26 @@ push.txt
 shots/
 *.log
 
+# 构建 / 引擎改造的临时脚本
+paren.cjs
+seg.js
+seg2.cjs
+seg3.cjs
+splice.js
+tierblock.js
+tier-bench.js
+tier-ladder.ps1
+extract2.js
+extract3.js
+pb.js
+readsession.js
+
+# 研究下载物（DouZero / PerfectDou / rlcard 等）
+research/
+
+# 依赖
+node_modules/
+
 # 系统
 Thumbs.db
 .DS_Store
