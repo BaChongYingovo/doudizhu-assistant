@@ -160,6 +160,18 @@ const document = {
 const windowMock = {}
 let loaderSpec = null
 windowMock.__ModuleLoader__ = { load(spec) { loaderSpec = spec } }
+// 记录 window 上的事件监听，键盘快捷键测试要派发 keydown
+const winListeners = Object.create(null)
+windowMock.addEventListener = (type, fn) => { (winListeners[type] = winListeners[type] || []).push(fn) }
+windowMock.removeEventListener = (type, fn) => {
+  const arr = winListeners[type]
+  if (!arr) return
+  const i = arr.indexOf(fn)
+  if (i >= 0) arr.splice(i, 1)
+}
+function dispatchWindow(type, ev) {
+  for (const fn of (winListeners[type] || []).slice()) fn(ev)
+}
 
 const ctxObj = {
   window: windowMock,

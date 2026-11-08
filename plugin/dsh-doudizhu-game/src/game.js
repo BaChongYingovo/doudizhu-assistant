@@ -74,6 +74,7 @@ function GameCore(DDZ) {
       passes: 0,
       played: zero(),
       playCounts: [0, 0, 0],
+      recent: {},              // seat -> { type:'play', cards } | { type:'pass' }，只存本轮，供牌桌两侧显示
       replay: [],
       winners: null,           // 'landlord' | 'farmers'
       result: null,
@@ -224,7 +225,10 @@ function GameCore(DDZ) {
 
     st.hands[seat] = minus(hand, cards)
     st.played = DDZ.addCards(st.played, cards)
+    // 新的一轮：清掉上一轮各家的动作标记
+    if (!st.last || st.last.seat === seat) st.recent = {}
     st.last = { seat, move }
+    st.recent[seat] = { type: 'play', cards: cards.slice() }
     st.lastLeader = seat
     st.passes = 0
     st.playCounts[seat]++
@@ -246,11 +250,13 @@ function GameCore(DDZ) {
     if (st.phase !== 'play' || st.turn !== seat) throw new Error('还没轮到这家过牌')
     if (!st.last || st.last.seat === seat) throw new Error('你是领出的人，不能过')
     st.passes++
+    st.recent[seat] = { type: 'pass' }
     st.replay.push({ type: 'pass', seat })
     if (st.passes >= 2) {
       st.turn = st.lastLeader
       st.last = null
       st.passes = 0
+      st.recent = {}
     } else {
       st.turn = nextSeat(seat)
     }
@@ -262,14 +268,14 @@ function GameCore(DDZ) {
    * ------------------------------------------------------------------ */
 
   function computeResult(st) {
-    const spring = st.winners === 'landlord' && st.playCounts[0] === 0 && st.playCounts[1] === 0 && st.playCounts[2] === 0
-      ? false : false // 占位，真实判断在下面
     const landlordWon = st.winners === 'landlord'
     const farmersPlayed = [0, 1, 2].filter(s => s !== st.landlord).reduce((a, s) => a + st.playCounts[s], 0)
     const isSpring = landlordWon && farmersPlayed === 0
     const isAnti = !landlordWon && st.playCounts[st.landlord] <= 1
 
-    let mult = st.base
+    // 叫分玩法：叫到的分就是底分倍数；抢地主玩法固定按 1 倍底分
+    const bidMult = st.mode === 'score' && st.bidHigh > 0 ? st.bidHigh : 1
+    let mult = st.base * bidMult
     for (let s = 0; s < 3; s++) mult *= st.doubling[s]
     for (let s = 0; s < 3; s++) if (st.open[s]) mult *= 2
     for (let i = 0; i < st.bombs; i++) mult *= 2
@@ -289,6 +295,8 @@ function GameCore(DDZ) {
       spring: isSpring,
       antiSpring: isAnti,
       multiplier: mult,
+      base: st.base,
+      bid: bidMult,
       delta,
       bombs: st.bombs,
       seconds: Math.max(1, Math.round(((st.endedAt || Date.now()) - st.startedAt) / 1000)),
@@ -332,6 +340,8 @@ function GameCore(DDZ) {
     } catch (e) {
       res = null
     }
+    // 引擎判定「不划算、先过」时，AI 也要真的过；否则之前会退成出最小一手，等于从不放牌
+    if (res && res.pass && canPass) return { move: null, reason: res.reason || '', win: res.win, ms: Date.now() - t0 }
     const valid = res && !res.pass && res.move && moves.some(m => m.cards.join(',') === res.move.cards.join(','))
     if (valid) return { move: res.move, reason: res.reason || '', win: res.win, ms: Date.now() - t0 }
     const fb = fallbackMove(st, seat)
