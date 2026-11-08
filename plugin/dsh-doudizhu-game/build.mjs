@@ -65,6 +65,11 @@ parts.push(
 parts.push(i18n)
 parts.push(style)
 
+const avatarFile = path.join(root, 'assets', 'dafeiyu-avatar.jpg')
+const avatarB64 = fs.readFileSync(avatarFile).toString('base64')
+parts.push('    /* 大肥鱼头像：构建时从 assets/dafeiyu-avatar.jpg 内联，牌桌不额外请求文件 */')
+parts.push('    const DAFEIYU_AVATAR = "data:image/jpeg;base64,' + avatarB64 + '"')
+
 parts.push('    /* ================= 4. 界面 ================= */')
 parts.push(ui)
 
