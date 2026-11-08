@@ -19,6 +19,7 @@
   "files": [
     "lib",
     "src",
+    "assets",
     "test",
     "client.js",
     "build.mjs",

@@ -107,12 +107,12 @@ function Seat(props) {
   const bid = st.bidLog.filter(b => b.seat === seat).slice(-1)[0]
   const bidText = bid ? (bid.value === 0 ? '—' : (typeof bid.value === 'number' ? bid.value + '分' : (bid.value === 'call' ? T.call : T.rob))) : ''
   const dbl = st.doubling[seat]
-  return h('div', { className: 'ddz-seat' + (isLandlord ? ' is-landlord' : '') + (isTurn ? ' is-turn' : '') + (seat === 0 ? ' is-me' : '') },
+  return h('div', { className: 'ddz-seat seat-' + seat + (isLandlord ? ' is-landlord' : '') + (isTurn ? ' is-turn' : '') + (seat === 0 ? ' is-me' : '') },
     h('div', { className: 'ddz-avatar' + (isLandlord ? ' landlord' : '') },
-      isLandlord ? h('span', { className: 'crown' }, '♛') : null,
-      name.slice(0, 1)),
+      h('img', { className: 'ddz-avatar-img', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
+      isLandlord ? h('span', { className: 'crown', 'aria-hidden': 'true' }, '♛') : null),
     h('div', { className: 'meta' },
-      h('div', { className: 'name' }, name, isLandlord ? h('span', { className: 'tag landlord-tag' }, ' ' + T.landlordTag) : null),
+      h('div', { className: 'name' }, name, isLandlord ? h('span', { className: 'tag landlord-tag' }, T.landlordTag) : null),
       h('div', { className: 'sub2' },
         fmt(T.lands, { n: left }),
         bidText ? ' · ' + bidText : '',
@@ -550,8 +550,11 @@ function PanelView() {
     topbar(),
     h('div', { className: 'ddz-scroll' },
       h('div', { className: 'ddz-setup' },
-        h('h1', null, T.appName),
-        h('div', { className: 'sub' }, T.tagline),
+        h('div', { className: 'ddz-hero' },
+          h('img', { className: 'ddz-hero-avatar', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
+          h('div', null,
+            h('h1', null, T.appName),
+            h('div', { className: 'sub' }, T.tagline))),
         h('div', { className: 'ddz-field' },
           h('label', null, T.mode),
           h('div', { className: 'ddz-modecard' },
@@ -588,6 +591,12 @@ function PanelView() {
     const handCards = cardsFromCounts(st.hands[0])
     const myTurn = st.phase === 'play' && st.turn === 0
     const lastCards = st.last ? cardsFromCounts(DDZ.countsOf(st.last.move.cards)) : null
+    const replay = st.replay || []
+    const lastEv = replay.length ? replay[replay.length - 1] : null
+    const passSeat = lastEv && lastEv.type === 'pass' ? lastEv.seat : -1
+    const playedBomb = !!(st.last && st.last.move && (st.last.move.type === 'bomb' || st.last.move.type === 'rocket'))
+    const playSerial = st.playCounts ? st.playCounts[0] + st.playCounts[1] + st.playCounts[2] : 0
+    const playKey = st.last ? playSerial + '-' + st.last.seat : 'empty'
     const bidders = st.phase === 'bid' ? G.bidSeat(st) : -1
     const openAll = st.open[0] || st.open[1] || st.open[2]
     return h('div', { className: 'ddz-root' },
@@ -605,8 +614,14 @@ function PanelView() {
         h('div', { className: 'ddz-mid' },
           h('div', { className: 'ddz-mid-inner' },
             h('div', { className: 'ddz-lastlabel' }, st.last ? T.lastPlay : T.noPlay),
-            h('div', { className: 'ddz-played' },
-              lastCards ? lastCards.map(c => h(Card, { key: c.id, card: c, small: true, static: true })) : null),
+            h('div', {
+              key: 'played-' + playKey,
+              className: 'ddz-played' + (playedBomb ? ' is-bomb' : ''),
+            }, lastCards ? lastCards.map(c => h(Card, { key: c.id, card: c, small: true, static: true })) : null),
+            passSeat >= 0 ? h('div', {
+              key: 'pass-' + replay.length,
+              className: 'ddz-pass',
+            }, (passSeat === 0 ? T.you : passSeat === 1 ? T.downTier : T.upTier) + ' · ' + T.passAction) : null,
             thinking ? h('div', { className: 'ddz-think' }, h('span', { className: 'ddz-spin' }), thinking) : null)),
         st.phase === 'bid' ? bidPanel() : null,
         st.phase === 'double' ? doublePanel() : null,
@@ -650,6 +665,7 @@ function PanelView() {
 
   function topbar() {
     return h('div', { className: 'ddz-topbar' },
+      h('img', { className: 'ddz-brand', src: DAFEIYU_AVATAR, alt: '', draggable: false }),
       h('div', { className: 'ddz-title' }, T.appName,
         h('small', null, st ? (st.phase === 'over' ? '' : (st.mode === 'rob' ? T.modeRob : T.modeScore) + ' · ' + tierLabel(tiers[0], T)) : T.tagline)),
       h('div', { className: 'ddz-spacer' }),
