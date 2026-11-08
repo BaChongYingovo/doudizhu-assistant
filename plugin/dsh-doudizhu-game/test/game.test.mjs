@@ -1,8 +1,20 @@
-import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
 import assert from 'node:assert/strict'
-const require = createRequire(import.meta.url)
-const DDZ = require('../src/engine.js')
-const { GameCore } = require('../src/game.js')
+
+// 插件包是 "type": "module"，src 里的 UMD 文件不能直接 require，
+// 用最小的 CJS 上下文跑一遍拿 exports。
+function loadUMD(rel) {
+  const file = fileURLToPath(new URL(rel, import.meta.url))
+  const mod = { exports: {} }
+  const ctx = vm.createContext({ module: mod, exports: mod.exports, console })
+  vm.runInContext(readFileSync(file, 'utf8'), ctx, { filename: file })
+  return mod.exports
+}
+
+const DDZ = loadUMD('../src/engine.js')
+const { GameCore } = loadUMD('../src/game.js')
 const G = GameCore(DDZ)
 
 function seeded(seed) {
@@ -141,7 +153,7 @@ t('结算：地主赢，两家农民扣分，倍数正确', () => {
   const r = G.computeResult(st)
   assert.equal(r.multiplier, 32)
   assert.equal(r.spring, true)
-  assert.deepEqual(r.delta, [64, -32, -32])
+  assert.deepEqual(Array.from(r.delta), [64, -32, -32])
 })
 
 t('反春：农民赢且地主只出过一手', () => {
@@ -156,7 +168,7 @@ t('反春：农民赢且地主只出过一手', () => {
   const r = G.computeResult(st)
   assert.equal(r.antiSpring, true)
   assert.equal(r.multiplier, 2)
-  assert.deepEqual(r.delta, [2, -4, 2])
+  assert.deepEqual(Array.from(r.delta), [2, -4, 2])
 })
 
 t('提示列表：跟牌时含不出，领出时不含', () => {
