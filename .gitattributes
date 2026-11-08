@@ -1,0 +1,8 @@
+# 统一用 LF：源码会被 build.mjs 原样拼进 client.js，
+# 混入 CRLF 会让「同一份源码」构建出不同字节的产物（体积 / diff 抖动）。
+* text=auto eol=lf
+
+*.jpg binary
+*.png binary
+*.ico binary
+*.woff2 binary
