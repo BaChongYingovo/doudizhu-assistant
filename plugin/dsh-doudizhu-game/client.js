@@ -1753,17 +1753,20 @@ const CSS = String.raw`
 
 /* ---------- 底部：手牌区 ---------- */
 .ddz-bottom { display: grid; grid-template-columns: 210px 1fr 250px; gap: 12px; padding: 10px 16px 14px; align-items: end; }
-.ddz-counter { border: 1px solid var(--ddz-line); border-radius: 12px; background: var(--ddz-panel); padding: 8px 10px; }
-.ddz-counter .ct { font-size: 11px; color: var(--ddz-dim); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.ddz-counter .ct button { margin-left: auto; border: 0; background: none; color: var(--ddz-dim); cursor: pointer; font-size: 11px; }
-.ddz-counts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.ddz-count {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: 3px 0; border-radius: 6px; background: rgba(255,255,255,.04);
-  font-size: 11px; color: var(--ddz-text);
+.ddz-counterbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  margin: 6px 16px 0; padding: 5px 8px;
+  border: 1px solid var(--ddz-line); border-radius: 10px; background: var(--ddz-panel);
 }
-.ddz-count b { font-size: 10px; color: var(--ddz-dim); font-weight: 500; }
+.ddz-counterbar .ct { font-size: 11px; color: var(--ddz-dim); margin-right: 4px; white-space: nowrap; }
+.ddz-count {
+  display: inline-flex; align-items: baseline; justify-content: center; gap: 3px;
+  min-width: 32px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.05);
+  font-size: 12px; line-height: 1.25; color: var(--ddz-text);
+}
+.ddz-count b { font-size: 11px; color: var(--ddz-dim); font-weight: 500; }
 .ddz-count.is-hot { background: rgba(251,113,133,.16); color: var(--ddz-bad); }
+.ddz-count.is-hot b { color: var(--ddz-bad); }
 .ddz-count.is-zero { opacity: .35; }
 
 .ddz-handwrap { min-width: 0; }
