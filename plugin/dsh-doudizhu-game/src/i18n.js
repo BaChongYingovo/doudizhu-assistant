@@ -85,8 +85,17 @@ const I18N = {
       pro100: 'pro100 · 算一百次',
       pro200: 'pro200 · 算两百次',
       pro500: 'pro500 · 算五百次',
-      pro9999: 'pro9999 · 拉满'
+      pro9999: 'pro9999 · 拉满',
+      sota: 'sota · DouZero 冠军模型'
     },
+    sotaTitle: 'DouZero 模型',
+    sotaIdle: '还没加载，选 sota 档就要用（约 5.8MB）',
+    sotaLoading: '正在下载 DouZero 权重… {p}%',
+    sotaReady: '已就绪 · 地主位走 DouZero，农民位按实测回退启发式',
+    sotaError: '加载失败：{msg}',
+    sotaRetry: '重试',
+    sotaDownload: '下载模型',
+    sotaFallback: '权重没加载好，这一手按启发式走',
     modeDescScore: '叫 1/2/3 分，最高分当地主',
     modeDescRob: '先叫地主，后面的人可以抢',
     modeTitle: '玩法选择',
@@ -131,7 +140,7 @@ const I18N = {
       '跟牌压不过就过；两家连过，回到最后出牌的人重新领出。',
       '难度档只影响电脑，开局前选；托管和军师建议随时能开。'
     ],
-    tierHint: '档位越高算得越细、想得越久；pro9999 一手最多要 4 秒。'
+    tierHint: '档位越高算得越细、想得越久；pro9999 一手最多要 4 秒。sota 走 DouZero 冠军模型，一手约 0.1 秒。'
   },
   en: {
     appName: 'Dou Dizhu',
@@ -218,8 +227,17 @@ const I18N = {
       pro100: 'pro100 · 100 sims',
       pro200: 'pro200 · 200 sims',
       pro500: 'pro500 · 500 sims',
-      pro9999: 'pro9999 · max'
+      pro9999: 'pro9999 · max',
+      sota: 'sota · DouZero champion'
     },
+    sotaTitle: 'DouZero model',
+    sotaIdle: 'Not loaded yet — the sota tier needs it (~5.8MB)',
+    sotaLoading: 'Downloading DouZero weights… {p}%',
+    sotaReady: 'Ready · landlord plays DouZero, farmers fall back to heuristics',
+    sotaError: 'Load failed: {msg}',
+    sotaRetry: 'Retry',
+    sotaDownload: 'Download',
+    sotaFallback: 'Weights not loaded, this move used the heuristic',
     modeDescScore: 'Bid 1/2/3 points, highest becomes landlord',
     modeDescRob: 'Call landlord first, others may rob',
     modeTitle: 'Game mode',
@@ -264,6 +282,6 @@ const I18N = {
       'You may pass when following; two passes end the trick and the last player leads.',
       'Difficulty only affects the bots, chosen before the deal. Auto-play and coach are always available.'
     ],
-    tierHint: 'Higher tiers think longer; pro9999 can take up to 4 seconds per move.'
+    tierHint: 'Higher tiers think longer; pro9999 can take up to 4 seconds per move. sota uses the DouZero champion model, about 0.1s per move.'
   }
 }

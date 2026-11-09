@@ -285,7 +285,10 @@ ok(!!startBtn, '有「开始新一局」按钮')
 const selects = nodes.filter(n => n.__el && n.type === 'select')
 ok(selects.length === 3, '三家各有一个档位下拉', '实际 ' + selects.length)
 const optCounts = selects.map(s => walk(s.props.children).filter(n => n.__el && n.type === 'option').length)
-ok(optCounts.every(c => c === 7), '每档下拉 7 个难度', JSON.stringify(optCounts))
+ok(optCounts.every(c => c === 8), '每档下拉 8 个难度（含 sota）', JSON.stringify(optCounts))
+const optValues = walk(selects[0].props.children).filter(n => n.__el && n.type === 'option').map(n => n.props.value)
+ok(optValues.indexOf('sota') >= 0, '档位里有 sota', JSON.stringify(optValues))
+ok(walk(selects[0].props.children).some(n => n.__el && /DouZero/.test(textOf(n))), 'sota 档的标签写了 DouZero')
 
 /* ---------------- 开局 ---------------- */
 console.log('开局')
