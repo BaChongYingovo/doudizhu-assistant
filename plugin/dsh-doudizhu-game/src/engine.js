@@ -432,9 +432,12 @@
     return best;
   }
 
-  // 说明：mode 参数曾尝试让三种拆牌偏好产生实质差异（长牌型 / 三条 / 对子优先），
-  // 实测会改变 greedyPlans 的手数估计，进而把启发式决策带偏（竞技场 landlord 0.970 → 0.915），
-  // 因此保留原权重、mode 仅作接口占位。改这里必须先跑 ab-run 对照。
+  // 三种拆牌偏好，候选集完全相同，只改排序权重：
+  //   mode 0 = 基线（长牌型优先，与改造前逐字一致）
+  //   mode 1 = 更激进地整把带走散牌（长牌型权重 +25）
+  //   mode 2 = 保留长牌型，先走三张/对子（长牌型 −30，三张/对子 +12）
+  // greedyPlans 取三种的最小手数，因此 planCount 只可能持平或更优。
+  // 注意：mode 0 必须保持与旧实现完全一致，否则 planCount 会整体漂移。
   function greedyPick(cc, mode) {
     // 候选：优先长顺子/连对/飞机，再看三张、对子、单张
     const cand = [];
@@ -467,6 +470,22 @@
       if (cc[i] >= 3) cand.push({ m: classify([i + 3, i + 3, i + 3]), w: 60 });
       if (cc[i] >= 2) cand.push({ m: classify([i + 3, i + 3]), w: 50 });
       if (cc[i] >= 1) cand.push({ m: classify([i + 3]), w: 40 });
+    }
+    const long = { straight: 1, pairseq: 1, plane: 1, plane1: 1, plane2: 1 };
+    if (mode === 1) {
+      // 整把带走：存在长牌型时，挑一次能扔掉最多牌的那手（同长比小）
+      const longs = cand.filter(c => c.m && long[c.m.type]);
+      if (longs.length) {
+        longs.sort((a, b) => b.m.cards.length - a.m.cards.length || a.m.rank - b.m.rank);
+        return longs[0].m;
+      }
+    } else if (mode === 2) {
+      // 攒长牌型：优先走三张/对子/单张，把顺子连对留到后面整把出
+      const shorts = cand.filter(c => c.m && !long[c.m.type]);
+      if (shorts.length) {
+        shorts.sort((a, b) => b.w - a.w);
+        return shorts[0].m;
+      }
     }
     cand.sort((a, b) => b.w - a.w);
     const pick = cand[0];

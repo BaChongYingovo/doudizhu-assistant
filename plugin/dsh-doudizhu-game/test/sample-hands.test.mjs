@@ -1,4 +1,4 @@
-// 采样与贪心拆牌回归测试
+﻿// 采样与贪心拆牌回归测试
 // 背景：旧 sampleHands 在牌池不够时用 addCard(随机点数) 凭空补牌，
 // 等于给对手发牌库里不存在的牌，污染所有 Monte-Carlo 档的胜率估计。
 // 旧 greedyPick 收了 mode 参数却没用，三个 mode 跑出同一结果。
@@ -91,7 +91,7 @@ t('三家张数与 played 合计恒为 54', () => {
     const seatCounts = [total(hands[0]), total(hands[1]), total(hands[2])]
     const h = DDZ.sampleHands(hands[me].slice(), played, seatCounts, me)
     assert.equal(total(h[0]) + total(h[1]) + total(h[2]) + total(played), 54, '牌数不平')
-    assert.deepEqual(h[me], hands[me], '自己的手牌被改动')
+    assert.deepEqual(Array.from(h[me]), Array.from(hands[me]), '自己的手牌被改动')
     assert.equal(landlord, landlord)
   }
 })
@@ -102,7 +102,7 @@ t('已知手牌座位照抄、未知座位张数正确', () => {
     const { hands } = dealFor(me)
     const known = [hands[0].slice(), hands[1].slice(), null]
     const h = DDZ.sampleHands(hands[0].slice(), zero(), [17, 17, 20], me, known)
-    assert.deepEqual(h[1], hands[1], '明牌座位被改动')
+    assert.deepEqual(Array.from(h[1]), Array.from(hands[1]), '明牌座位被改动')
     assert.equal(total(h[2]), 20, '未知座位张数不对：' + total(h[2]))
     assert.equal(total(h[0]) + total(h[1]) + total(h[2]), 54)
   }
@@ -166,14 +166,30 @@ t('greedyPick 返回合法牌型且结果确定', () => {
   }
 })
 
-t('三个 mode 均可调用（mode 目前是占位参数）', () => {
-  // 说明：曾让三 mode 产生实质差异，实测会把 greedyPlans 手数估计带偏
-  //（arena landlord 0.970 → 0.915），已回退。此处只保证接口不崩。
-  for (const c of hands17(20)) {
+t('三个 mode 至少 10 组手牌首手不同，且 planCount 不劣于 mode 0', () => {
+  let diff = 0
+  const hands = hands17(80)
+  for (const c of hands) {
+    const seen = new Set()
     for (let mode = 0; mode < 3; mode++) {
       const m = DDZ.greedyPick(c.slice(), mode)
-      if (m) assert.ok(classify(m.cards), 'mode ' + mode + ' 牌型非法')
+      seen.add(m ? m.cards.slice().sort((a, b) => a - b).join(',') : 'none')
     }
+    if (seen.size > 1) diff++
+  }
+  assert.ok(diff >= 10, '不同首手只有 ' + diff + ' 组')
+  // greedyPlans 取三 mode 最小值 —— 必须 <= 只用 mode 0 走完的手数
+  for (const c of hands.slice(0, 40)) {
+    const min3 = DDZ.greedyPlans(c.slice())
+    let cc = c.slice(), cnt = 0, guard = 0
+    while (total(cc) > 0 && guard++ < 40) {
+      if (cc[13] && cc[14]) { cc[13]--; cc[14]--; cnt++; continue }
+      const m = DDZ.greedyPick(cc, 0)
+      if (!m) break
+      for (const x of m.cards) cc[x - 3]--
+      cnt++
+    }
+    assert.ok(min3 <= cnt, '三 mode 最小值 ' + min3 + ' 大于 mode0 的 ' + cnt)
   }
 })
 

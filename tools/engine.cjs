@@ -20,4 +20,8 @@ if (!shim.exports || typeof shim.exports.advise !== 'function') {
   throw new Error('engine.js 没有导出 advise，UMD 分支可能变了');
 }
 
+// 供 /health 校验「这一局到底跑的是哪个引擎」：A/B 时防止端口没杀干净、健康检查命中旧进程
+shim.exports.__src = SRC;
+shim.exports.__sha = require('node:crypto').createHash('sha256').update(code).digest('hex').slice(0, 12);
+
 module.exports = shim.exports;
