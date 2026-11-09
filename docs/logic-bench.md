@@ -173,3 +173,48 @@
 - 指纹核对：`Get-FileHash <engine file> -Algorithm SHA256`，取前 12 位小写；TEMP 快照另用 `git hash-object` 对目标 commit 的 blob 校验。
 - 执行策略：`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force`（仅当次 pwsh 进程有效），用于让未签名的 `tools/ab-run.ps1` 可加载；不改仓库文件。
 - 文档交付：`doudizhu/docs/logic-bench.md`（本任务唯一新增文件）。开工前 `git status --short` 已存在他人改动 `M tools/ab-run.ps1` / `M tools/bridge.mjs` / `M tools/engine.cjs`（指纹校验前置改动），以及未跟踪 `ai/`；本任务不修改它们、不改 engine.js / game.js / ui.js。
+
+---
+
+## 8. 强度基准：对 DouZero WP（2026-11-09 追加）
+
+前面的 min / bridge 只能做回归，不能当强度依据。本节改用训练过的 DouZero WP 权重当**对手**。
+
+### 8.1 怎么跑
+
+```bash
+powershell -ExecutionPolicy Bypass -File tools/bench-vs-douzero.ps1 -Games 300 -Tier go
+```
+
+脚本起两个桥：8801 = 本引擎（被评测方），8802 = 同一份 bridge 但 `DZ_SOTA_FARMER=1`，
+让地主与两个农民都由 DouZero 决策。`arena.py` 用 `--opp-port 8802` 指向对手桥
+（`--port` 只能指一份引擎，故新增 `--opp-port`）。`PYTHONHASHSEED=0` 必须固定。
+
+### 8.2 结果（seed=1，`PYTHONHASHSEED=0`）
+
+| 我方档位 | 座位 | 样本 | 胜率 | illegal |
+|---|---|---|---|---|
+| `go` | 地主 | 300 | **0.553** | 0 |
+| `go` | 农民 | 300 | **0.447** | 0 |
+| `pro200` | 地主 | 200 | 0.540 | 0 |
+| `pro200` | 农民 | 200 | 0.515 | 0 |
+| `sota`（DouZero 对 DouZero，对称性检查） | 地主 | 100 | 0.620 | 0 |
+
+产物：`arena/result-vs-douzero-{lord,farmer}-{go,pro200}.json`、`result-vs-douzero-sym-100.json`。
+
+### 8.3 读法
+
+- **整体五五开**：地主 0.553、农民 0.447，都在 0.5 附近，样本 σ≈2.9%，属同一水平线。
+- **对称性检查 0.620 是关键对照**：同一套 DouZero 权重，地主模型打农民模型能到 0.62，
+  说明"地主位 + 地主模型"本身占优。因此不能把 0.553 / 0.447 读成"我方地主强、农民弱"。
+- **`pro200` 在农民位更好**（0.515 vs 0.447）：蒙特卡洛推演在信息不完全的农民位有正收益，
+  与 `sota vs plus` 农民位 0.4433 的结论方向一致（DouZero 农民模型偏弱）。
+- 对 min 的 0.946 / 0.898 **只作回归门禁**，不进入本节结论。
+
+### 8.4 已知局限
+
+- DouZero 只覆盖 WP 变体；ADP / SL 权重在 HF 镜像里也有，未跑。
+- 对手桥把 DouZero 当"策略后端"用，其输入历史由 bridge 从 trace 重建，若 trace 与真实
+  出牌序列有偏差（例如中途 pass 记录），对手强度会被低估——这一点已由 `sota vs plus 0.697`
+  的独立结果交叉验证，量级可信。
+- PerfectDou 因编码器依赖 Linux `.so`，Windows 下无法当对手，暂缺这一强基线。
