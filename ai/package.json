@@ -1,0 +1,13 @@
+{
+  "name": "dsh-doudizhu-perfectdou-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Node-side feasibility POC for PerfectDou ONNX inference (no plugin integration)",
+  "scripts": {
+    "poc": "node poc.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-node": "1.31.1"
+  }
+}

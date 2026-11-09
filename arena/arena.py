@@ -134,7 +134,7 @@ def main():
     ap.add_argument('--seat', type=int, default=0, choices=[0, 1, 2])
     ap.add_argument('--opp', default='random', choices=['random', 'min', 'bridge'])
     ap.add_argument('--opp-tier', default='go', choices=['free', 'go', 'plus', 'pro', 'ultra'])
-    ap.add_argument('--tier', default='go', choices=['free', 'go', 'plus', 'pro', 'ultra'])
+    ap.add_argument('--tier', default='go', choices=['free', 'go', 'plus', 'pro', 'ultra', 'sota'])
     ap.add_argument('--seed', type=int, default=1)
     ap.add_argument('--port', type=int, default=8791)
     ap.add_argument('--out', default='')
