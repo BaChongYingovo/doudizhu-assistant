@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * 斗地主军师 · 牌局引擎
  * 只按点数建模（花色不影响斗地主牌型），一副牌 54 张。
  * 点数：3..15 为 3..2，16 小王，17 大王
@@ -432,6 +432,9 @@
     return best;
   }
 
+  // 说明：mode 参数曾尝试让三种拆牌偏好产生实质差异（长牌型 / 三条 / 对子优先），
+  // 实测会改变 greedyPlans 的手数估计，进而把启发式决策带偏（竞技场 landlord 0.970 → 0.915），
+  // 因此保留原权重、mode 仅作接口占位。改这里必须先跑 ab-run 对照。
   function greedyPick(cc, mode) {
     // 候选：优先长顺子/连对/飞机，再看三张、对子、单张
     const cand = [];
@@ -811,23 +814,61 @@
   function addCard(c, r) { c[r - 3] = (c[r - 3] || 0) + 1; }
 
   // 把还没露面的牌随机分给另外两家（推演用）
-  function sampleHands(hand, played, seatCounts, me) {
+  // 牌池守恒：发出去的牌必须全部来自「54 张 - 自己手牌 - 已出牌」，
+  // 绝不凭空补牌（旧实现在池子不够时随机 addCard，等于给对手塞了牌库里没有的牌）。
+  // knownHands[s] 非 null 表示该座位手牌已完全确定（明牌 / 自己），直接照抄、不参与采样。
+  function sampleHands(hand, played, seatCounts, me, knownHands) {
     const pool = [];
     const u = unseen(hand, played);
     for (let i = 0; i < N; i++) for (let k = 0; k < u[i]; k++) pool.push(i + 3);
+
+    const hands = [zero(), zero(), zero()];
+    hands[me] = hand.slice();
+
+    const fixed = [false, false, false];
+    const known = Array.isArray(knownHands) ? knownHands : null;
+    for (let s = 0; s < 3; s++) {
+      if (s === me) { fixed[s] = true; continue; }
+      const kh = known ? known[s] : null;
+      if (!kh) continue;
+      hands[s] = kh.slice();
+      fixed[s] = true;
+      for (let i = 0; i < N; i++) {
+        const take = Math.min(hands[s][i], pool.filter(r => r === i + 3).length);
+        for (let k = 0; k < take; k++) {
+          const at = pool.indexOf(i + 3);
+          if (at >= 0) pool.splice(at, 1);
+        }
+      }
+    }
+
+    // 只把池子里的牌按未知座位的张数切分；池子不够就少发，绝不凭空造牌
+    const unknown = [];
+    for (let s = 0; s < 3; s++) if (!fixed[s]) unknown.push(s);
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
     }
-    const hands = [zero(), zero(), zero()];
-    hands[me] = hand.slice();
     let p = 0;
-    for (let s = 0; s < 3; s++) {
-      if (s === me) continue;
-      let want = seatCounts[s] || 0;
-      const h = hands[s];
-      while (want-- > 0 && p < pool.length) addCard(h, pool[p++]);
-      while (total(h) < (seatCounts[s] || 0)) addCard(h, 3 + Math.floor(Math.random() * 15));
+    for (const s of unknown) {
+      const want = Math.min(seatCounts[s] || 0, pool.length - p);
+      for (let k = 0; k < want; k++) addCard(hands[s], pool[p++]);
+    }
+    // 剩下的牌（张数与 seatCounts 对不上时）补给还缺牌的未知座位，仍只发池内牌
+    for (const s of unknown) {
+      const want = (seatCounts[s] || 0) - total(hands[s]);
+      for (let k = 0; k < want && p < pool.length; k++) addCard(hands[s], pool[p++]);
+    }
+    // 仍有剩余（调用方 seatCounts 与实际不符）→ 轮转发给未知座位，保证 54 张守恒
+    let k = 0;
+    while (p < pool.length && unknown.length) {
+      addCard(hands[unknown[k % unknown.length]], pool[p++]);
+      k++;
+    }
+
+    const dealt = total(hands[0]) + total(hands[1]) + total(hands[2]) + total(played);
+    if (dealt !== 54) {
+      throw new Error('sampleHands 牌数不平：' + dealt + ' != 54（hand=' + total(hand) + ', played=' + total(played) + ', pool=' + u + '）');
     }
     return hands;
   }
@@ -887,7 +928,7 @@
     let wins = 0, done = 0;
     for (let k = 0; k < samples; k++) {
       if (deadline && Date.now() > deadline) break;
-      const hands = sampleHands(state.hand, state.played, state.seatCounts, state.me);
+      const hands = sampleHands(state.hand, state.played, state.seatCounts, state.me, state.knownHands);
       let lastSeat = -1, lastMove = null;
       if (move) {
         hands[state.me] = minus(hands[state.me], move.cards);
@@ -1036,6 +1077,8 @@
     zero, total, countsOf, minus, addCards, cardsOf, fullDeck, shuffled,
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
     describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
-    deal, pickLandlord
+    deal, pickLandlord,
+    // 内部工具（测试与 SOTA 适配用，不参与 UI）
+    sampleHands, greedyPick, greedyPlans
   };
 });
