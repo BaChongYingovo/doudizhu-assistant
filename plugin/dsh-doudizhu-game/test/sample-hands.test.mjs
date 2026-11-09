@@ -193,6 +193,20 @@ t('三个 mode 至少 10 组手牌首手不同，且 planCount 不劣于 mode 0'
   }
 })
 
+t('确定性向量：3/4/5/6/7 各一张，mode0/mode1 一手 34567、mode2 要 5 手', () => {
+  // 3..7 各一张 => counts 索引 0..4 各 1
+  const c = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  const m0 = DDZ.greedyPick(c.slice(), 0)
+  const m1 = DDZ.greedyPick(c.slice(), 1)
+  const m2 = DDZ.greedyPick(c.slice(), 2)
+  assert.equal(m0.type, 'straight')
+  assert.equal(m1.type, 'straight')
+  assert.equal(Array.from(m0.cards).join(','), '3,4,5,6,7')
+  assert.equal(Array.from(m1.cards).join(','), '3,4,5,6,7')
+  assert.equal(m2.cards.length, 1, 'mode2 应该先走单张')
+  assert.equal(DDZ.greedyPlans(c.slice()), 1, 'greedyPlans 应取最小值 1')
+})
+
 t('greedyPlans 结果合理（1..手牌张数）', () => {
   for (const c of hands17(20)) {
     const plans = DDZ.greedyPlans(c)
