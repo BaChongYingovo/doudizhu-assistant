@@ -1,7 +1,7 @@
 {
   "name": "dsh-doudizhu-game",
-  "version": "0.1.0",
-  "description": "斗地主：在 DSH 里人机对战，三家分别选七档难度，带记牌器、出牌建议、叫抢/加倍/明牌、完整结算与复盘。",
+  "version": "0.2.0",
+  "description": "斗地主：在 DSH 里人机对战，三家分别选八档难度（含 DouZero 冠军模型 sota），带记牌器、出牌建议、叫抢/加倍/明牌、完整结算与复盘。",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BaChongYingovo/doudizhu-assistant.git",
@@ -39,7 +39,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/game.test.mjs && node test/render.test.mjs && node test/host-boot.test.mjs && node test/check-keys.mjs"
+    "test": "node test/game.test.mjs && node test/movegen.test.mjs && node test/advise-heuristic.test.mjs && node test/fallback-move.test.mjs && node test/bid-strength.test.mjs && node test/sample-hands.test.mjs && node test/sota.test.mjs && node test/render.test.mjs && node test/host-boot.test.mjs && node test/check-keys.mjs"
   },
   "dsh": {
     "bundle": {

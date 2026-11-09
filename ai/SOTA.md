@@ -43,14 +43,51 @@
 - 权重：`landlord.onnx` 5,834,135 B、`landlord_up` / `landlord_down` 各 6,061,463 B，合计 17,956,061 B。
 - Node 依赖 `onnxruntime-node@1.31.1` 解包后约 295 MiB（仅评测用，不进插件包）。
 
-## 4. 还没做的（浏览器侧）
+## 4. 浏览器侧（已接入，2026-11-09）
 
-插件是纯前端包，`sota` 要在 DSH 里生效还需要：
+原计划的 `onnxruntime-web` 方案被否掉了：DouZero 的图只有「一个 LSTM + 六层全连接」
+（`research/dist/DouZero-main/douzero/dmc/models.py`），权重本来就是 float32，
+自己解析 ONNX initializer + 手写前向就够，省下 8–15 MB 的 wasm 运行时，也不需要 CDN。
 
-1. `onnxruntime-web`（wasm 后端约 8–15 MB）——`client.js` 现在是 144 KB，直接内联会失控，
-   需要按需从 CDN/本地资源加载。
-2. 放到 Web Worker 里跑，主线程不能阻塞（用户要求 sota 允许 4s 且必须有等待反馈）。
-3. 权重按需下载 + sha256 校验 + 失败降级 `pro9999` 并提示。
+插件里的实现：`plugin/dsh-doudizhu-game/src/sota.js`
 
-这三步是独立的 UI/运行时改造，用户已要求先出可装的 L1 PR、L2 单独 PR，所以本文件只覆盖
-Node 侧接入与强度证据。
+1. **不用 onnxruntime-web**：自带 protobuf 解析器读 initializer（15 个张量），
+   LSTM 按 4 门手写（`i/f/g/o` 顺序与 ONNX 一致），再接 6 层 `Gemm+ReLU`。
+   数值对齐 `onnxruntime-node` 的结果：逐动作分值最大误差 < 1e-4，`argmax` 5/5 全一致
+   （`plugin/dsh-doudizhu-game/test/sota.test.mjs`，独立复算脚本 `ai/validate-js-infer.mjs`）。
+2. **不阻塞主线程**：整次前向（含编码 + 全部候选打分）实测 15.3 ms（Node v24, 20 副对局
+   183 次决策），远低于 `pro9999` 的 4 s 上限，所以没上 Worker——真上了反而多一层消息开销。
+3. **权重按需下载**：清单仍然照抄 `ai/models/MANIFEST.json`（体积 + sha256），
+   先试 `huggingface.co`，失败自动切 `hf-mirror.com`（本机实测直连 HF 超时、镜像可用且
+   返回的最终 CDN 带 `access-control-allow-origin`）。校验不过一律拒绝加载；
+   失败会降级到 `go` 档启发式并在建议卡里写明原因，不会卡住对局。
+4. **农民位仍然回退启发式**：与 Node 侧结论一致，插件 `engine.js` 里 `setSotaFarmer(true)`
+   才能强制（默认关）。
+
+想复现强度：`node plugin/dsh-doudizhu-game/tools/arena-sota.mjs --a sota --b go --farmer plus --games 100`；
+只看速度：`node plugin/dsh-doudizhu-game/tools/bench-sota.mjs 20`；
+真浏览器实测（Headless Chrome 走真实网络下载 + 缓存 + 前向 + 引擎建议）：
+`node plugin/dsh-doudizhu-game/tools/browser-sota-check.mjs`。
+
+实测数字（Chrome，冷缓存）：
+
+| 环节 | 结果 |
+|---|---|
+| 下载 5,834,135 B + sha256 校验 | 2.8 s，源 `huggingface.co`（浏览器侧可达，Node curl 直连会超时） |
+| ONNX 解析 + 首次前向（56 个候选） | 51.9 ms |
+| 引擎 `advise()` 整次（含 sotaCtx 还原 + 候选生成） | 59.4 ms |
+| 结果 | `tier: sota`、`fallback: false`、理由「（sota 档）DouZero WP 选「单张 9」」 |
+
+## 5. 强度复核（插件内，同发牌成对）
+
+`tools/arena-sota.mjs`，农民固定 `plus`，A/B 用同一批发牌各打一遍：
+
+| 地主档位 | 300 副胜率（seed=7） |
+|---|---|
+| `sota` | **0.740** |
+| `go` | 0.630 |
+
+差值 +0.110，与上面 §2 的 Node 侧（0.697 vs 0.613）方向一致、量级相符；
+说明插件里的 `sotaCtx` 还原与 `bridge.mjs` 那套等价，没在搬运中失真。
+
+

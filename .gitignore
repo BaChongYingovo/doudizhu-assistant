@@ -36,3 +36,8 @@ ui-kimi/
 
 # 竞技场跑分结果（体积大，按需本地重跑）
 arena/result-*.json
+
+# headless chrome 临时 profile 与检查报告
+doudizhu/plugin/dsh-doudizhu-game/tools/chrome-profile/
+plugin/dsh-doudizhu-game/tools/chrome-profile/
+plugin/dsh-doudizhu-game/tools/report.json

@@ -207,21 +207,41 @@ toast：短提示（非法出牌、识别失败、托管开关等），右下角
 `node test/render.test.mjs` 会检查：
 
 1. 插件三处注册（main / sidebar.panellist / sidebar.panellist.actions），「更多」里一行能打开面板；
-2. 开局面板有标题、开始按钮、三个难度下拉各 7 档；
+2. 开局面板有标题、开始按钮、三个难度下拉**各 8 档**（多了 `sota`），选到 `sota` 时下面出现一行模型状态；
 3. 开局后牌桌出现：手牌恰好 17 张、记牌器、三个座位；
 4. 托管能自动打完一整局并弹出结算，结算里有「本局得分」「再来一局」，点「再来一局」回到牌桌；
 5. 战绩写进 localStorage。
 
 `node test/game.test.mjs` 守规则（发牌、叫分、加倍、出牌、过牌、结算、春天/反春、明牌翻倍）。
+`node test/sota.test.mjs` 守 DouZero（权重解析、纯 JS 前向对齐 onnxruntime、下载/镜像/sha256、引擎接线与回退）。
 `node test/check-keys.mjs` 守文案与 API 名字没写错。
 
-改完必须：`node build.mjs && node test/game.test.mjs && node test/render.test.mjs && node test/check-keys.mjs`。
+改完必须：`node build.mjs && node test/game.test.mjs && node test/sota.test.mjs && node test/render.test.mjs && node test/check-keys.mjs`。
+
+---
+
+## 5.1 `sota` 档的界面约定（新）
+
+选到 `sota` 时，开局面板难度选择下面多一行状态条（类名复用 `ddz-statsline`），四种状态：
+
+| 状态 | 显示 | 可点 |
+|---|---|---|
+| `idle` | 「DouZero 权重 5.6 MB，首次使用需要下载」+ `下载模型` 按钮 | 下载 |
+| `downloading` | 「下载中 42%」 | 否 |
+| `ready` | 「模型已就绪（hf-mirror.com）」 | 否 |
+| `error` | 原因 + `重试` 按钮 | 重试 |
+
+- 只要「我的档位」是 `sota` 且未就绪，进面板会自动开始下载，不用等用户点。
+- 下载失败不阻止开局：地主位降级到 `go` 档启发式，建议卡理由里会写明「DouZero 权重没加载」。
+- 农民位即使用 `sota` 也走 `go`（实测 DouZero 农民更弱），建议卡理由里会写清原因——这不是 bug，别「修」。
+- 状态条文案 key：`sotaTitle/sotaIdle/sotaLoading/sotaReady/sotaError/sotaRetry/sotaDownload`。
 
 ---
 
 ## 6. 还没做 / 已知待办
 
 - 键盘快捷键、出牌阶段明牌按钮、托管时建议卡留理由：**代码已写，等重建 + 重装 + 重启验证**。
+- `sota` 档（DouZero）已接入并跑通测试，**等重装 + 重启后在真实浏览器里验一次下载**（Node 侧已验证：解析/前向/校验/镜像/降级）。
 - 记牌器横排修复已提交，需重启 DSH 才看得到。
 - AI 建议的「估计胜率」只有 plus 及以上档有（free/go 用启发式，不算胜率）。
 - 复盘只有「上一步/下一步」，没有自动播放。
