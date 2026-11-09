@@ -44,7 +44,7 @@ def ask_bridge(port, body, timeout=5):
 
 def find_action(legal_ids, move_str):
     key = canon(move_str)
-    for aid in legal_ids:
+    for aid in sorted(legal_ids):
         if ID_2_ACTION[aid] != 'pass' and canon(ID_2_ACTION[aid]) == key:
             return aid
     return None
@@ -107,9 +107,12 @@ def play_one(env, seat, port, rng, opp='random', tier='go', opp_tier='go'):
                     oaid = None
                 aid = oaid if oaid is not None else random_action(state, rng)
             elif opp == 'min':  # 最简单的贪心：能出就出牌数最少的
+                # 必须按 (张数, 牌面) 排序再取：legal_actions 的遍历顺序受
+                # PYTHONHASHSEED 影响，只按 len 取 min 会让同一个种子每次跑出不同对局。
                 legal = list(state['legal_actions'].keys())
                 plays = [a for a in legal if ID_2_ACTION[a] != 'pass']
-                aid = min(plays, key=lambda a: len(ID_2_ACTION[a])) if plays else ACTION_2_ID['pass']
+                aid = (min(plays, key=lambda a: (len(ID_2_ACTION[a]), ID_2_ACTION[a]))
+                       if plays else ACTION_2_ID['pass'])
             else:
                 raise SystemExit('unknown opp: ' + opp)
         state, pid = env.step(aid)

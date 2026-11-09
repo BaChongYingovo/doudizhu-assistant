@@ -325,10 +325,10 @@
     let v;
     const t = total(c);
     if (!t) v = 0;
-    else if (t > 16) v = greedyPlans(c);
+    else if (t > 16) v = greedyPlans(c, [0]);
     else {
       const r = exactPlans(c, { nodes: 0, budget: 30000 });
-      v = (r == null) ? greedyPlans(c) : r;
+      v = (r == null) ? greedyPlans(c, [0]) : r;
     }
     if (planMemo.size > 30000) planMemo.clear();
     planMemo.set(key, v);
@@ -415,9 +415,13 @@
     return out;
   }
 
-  function greedyPlans(c) {
+  // modeList 默认 [0,1,2] 供测试与 SOTA 适配；planCount 只传 [0]：
+  // 三模式取最小手数会让 planCount 系统性偏低（实测 arena landlord 500 副 −14 局），
+  // mode1/2 的理想拆法在对局里兑现不了，启发式会误判自己快走完了。
+  function greedyPlans(c, modeList) {
+    const modes = modeList || [0, 1, 2];
     let best = 999;
-    for (let mode = 0; mode < 3; mode++) {
+    for (const mode of modes) {
       const cc = c.slice();
       let cnt = 0, guard = 0;
       while (total(cc) > 0 && guard++ < 40) {
@@ -434,9 +438,10 @@
 
   // 三种拆牌偏好，候选集完全相同，只改排序权重：
   //   mode 0 = 基线（长牌型优先，与改造前逐字一致）
-  //   mode 1 = 更激进地整把带走散牌（长牌型权重 +25）
-  //   mode 2 = 保留长牌型，先走三张/对子（长牌型 −30，三张/对子 +12）
-  // greedyPlans 取三种的最小手数，因此 planCount 只可能持平或更优。
+  //   mode 1 = 整把带走：有长牌型就挑一次扔牌最多的那手
+  //   mode 2 = 攒长牌型：先走三张/对子/单张，长牌型留到后面整把出
+  // 三种模式是并列的拆牌方案，不互相嵌套：planCount 只用 mode 0，
+  // 因为实测把 min(mode0..2) 当手数会让决策过度乐观（arena −14/500）。
   // 注意：mode 0 必须保持与旧实现完全一致，否则 planCount 会整体漂移。
   function greedyPick(cc, mode) {
     // 候选：优先长顺子/连对/飞机，再看三张、对子、单张

@@ -1,4 +1,7 @@
 ﻿param([string]$List = "v3", [int]$Games = 200, [int]$Seat = 0, [string]$Opp = "min", [int]$Seed = 1)
+# 固定 Python 哈希种子：legal_actions 的遍历顺序会受它影响，
+# 不固定时 min 对手的同长度取舍每次不同，同一个引擎能跑出 0.898~0.960。
+$env:PYTHONHASHSEED = '0'
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
