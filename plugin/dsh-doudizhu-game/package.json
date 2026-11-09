@@ -39,7 +39,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/game.test.mjs && node test/movegen.test.mjs && node test/advise-heuristic.test.mjs && node test/fallback-move.test.mjs && node test/bid-strength.test.mjs && node test/sample-hands.test.mjs && node test/sota.test.mjs && node test/render.test.mjs && node test/host-boot.test.mjs && node test/check-keys.mjs"
+    "test": "node test/game.test.mjs && node test/movegen.test.mjs && node test/advise-heuristic.test.mjs && node test/fallback-move.test.mjs && node test/bid-strength.test.mjs && node test/sample-hands.test.mjs && node test/tiers.test.mjs && node test/sota.test.mjs && node test/render.test.mjs && node test/host-boot.test.mjs && node test/check-keys.mjs"
   },
   "dsh": {
     "bundle": {

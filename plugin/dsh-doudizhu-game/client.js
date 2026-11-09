@@ -829,19 +829,31 @@ window.__ModuleLoader__.load({
 
   /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 / sota ---------------- */
 
-  const TIERS = ['free', 'go', 'plus', 'pro100', 'pro200', 'pro500', 'pro9999', 'sota'];
+  /* 难度阶梯按「实测胜率」排，不按「推演次数」排。
+   *
+   * 旧阶梯 8 档，实测（对 DouZero WP、地主位、200 副）
+   *   free 0.05 / go 0.56 / plus 0.50 / pro100 0.56 / pro200 0.585 / pro500 0.575
+   * 三个毛病：free 低到不像在打牌；plus 反而比 go 差；pro100=go、pro500=pro200。
+   *
+   * 新阶梯 5 档，同一口径复测
+   *   free 0.135 / go 0.56 / plus 0.56 / pro 0.60 / sota 0.674
+   * 再往上加预算（700 次推演）实测 0.58 且慢 2.4 倍，所以不设 max 档。
+   */
+  const TIERS = ['free', 'go', 'plus', 'pro', 'sota'];
 
-  // 每档的思考预算：budget = 最多推演多少次，ms = 每手最多花多久
-  // sota 不做蒙特卡洛：它是 DouZero WP 神经网络的一次前向（约 30–80ms），预算只作上限提示
+  // budget = 最多推演多少次，ms = 每手最多花多久
+  // sota 不做蒙特卡洛：它是 DouZero WP 神经网络的一次前向，预算只作上限提示
   const TIER_CFG = {
-    free:    { budget: 0,    ms: 0 },
-    go:      { budget: 0,    ms: 0 },
-    plus:    { budget: 12,   ms: 120 },
-    pro100:  { budget: 100,  ms: 500 },
-    pro200:  { budget: 200,  ms: 1000 },
-    pro500:  { budget: 500,  ms: 2000 },
-    pro9999: { budget: 9999, ms: 4000 },
-    sota:    { budget: 0,    ms: 4000 }
+    free: { budget: 0,   ms: 0 },
+    go:   { budget: 0,   ms: 0 },
+    plus: { budget: 60,  ms: 200 },
+    pro:  { budget: 250, ms: 600 },
+    sota: { budget: 0,   ms: 4000 }
+  };
+
+  // 旧档位名保留成别名，读老存档（localStorage ddz-tiers）不会掉回默认
+  const TIER_ALIAS = {
+    pro100: 'pro', pro200: 'pro', pro500: 'pro', pro9999: 'pro', max: 'pro'
   };
 
   function tierOf(t) {
@@ -849,6 +861,7 @@ window.__ModuleLoader__.load({
     if (typeof t === 'string') {
       const s = t.toLowerCase();
       if (TIER_CFG[s]) return s;
+      if (TIER_ALIAS[s]) return TIER_ALIAS[s];
     }
     return 'go';
   }
@@ -995,20 +1008,20 @@ window.__ModuleLoader__.load({
     const follows = !!(state.last && state.last.seat !== state.me);
     const lm = follows ? state.last.move : null;
     const moves = generateMoves(state.hand, lm);
-    const notes = ['free 档：随手打，只顾这一手'];
+    const notes = ['free 档：只看这一手，挑最小的打'];
     if (!moves.length) {
       return { pass: true, move: null, plan: planCount(state.hand), reason: '要不起。', options: [], notes, tier: 'free' };
     }
-    let m;
-    if (Math.random() < 0.55) m = moves[Math.floor(Math.random() * moves.length)];
-    else {
-      let worst = moves[0], wr = -1;
-      for (const x of moves) {
-        const rp = planCount(minus(state.hand, x.cards));
-        if (rp > wr) { wr = rp; worst = x; }
-      }
-      m = worst;
-    }
+    // 新手会做错事，但不该蠢到拆炸弹出小牌：先排除炸弹/王炸（除非手里只剩炸弹能出）
+    const plain = moves.filter(m => m.type !== 'bomb' && m.type !== 'rocket');
+    const pool = plain.length ? plain : moves;
+    // 只保留张数最少的那些（新手不爱打长牌型），再按点数从小到大
+    const minLen = Math.min.apply(null, pool.map(m => m.cards.length));
+    const small = pool.filter(m => m.cards.length === minLen);
+    small.sort((a, b) => a.rank - b.rank || a.cards.length - b.cards.length);
+    // 80% 打最小的一手，20% 在同档里随手换一个，免得每局一模一样
+    const idx = Math.random() < 0.8 ? 0 : Math.floor(Math.random() * small.length);
+    const m = small[idx];
     return {
       pass: false, move: m, plan: planCount(minus(state.hand, m.cards)),
       reason: '（free 档）随手出：' + describe(m) + '。', options: [], notes, tier: 'free'
@@ -1052,9 +1065,14 @@ window.__ModuleLoader__.load({
     const baseKey = base.pass ? 'pass' : cardKey(base.move);
     const baseStat = stats.find(x => cardKey(x.move) === baseKey);
 
-    // 推演结论和启发式差得不多时，尊重启发式的牌形判断
+    // 推演结论和启发式差得不多时，尊重启发式的牌形判断。
+    // 门槛按样本量走：样本少时二项分布抖动大，必须领先很多才敢推翻启发式，
+    // 否则 12 次推演就能把一手好牌换成噪声（旧版 plus 档 0.50 低于 go 0.56 就是这个原因）。
     let chosen = top;
-    if (baseStat && rate(top) - rate(baseStat) < 0.03) chosen = baseStat;
+    const pTop = rate(top);
+    const se = Math.sqrt(Math.max(0.0004, pTop * (1 - pTop) / Math.max(1, top.done)));
+    const margin = Math.max(0.03, Math.min(0.12, se));
+    if (baseStat && pTop - rate(baseStat) < margin) chosen = baseStat;
 
     const winPct = Math.round(rate(chosen) * 100);
     const simNote = '推演 ' + used + ' 次，估计胜率 ' + winPct + '%';
@@ -1198,7 +1216,7 @@ window.__ModuleLoader__.load({
     N, idx, rk, rankName, NAME, TYPE_CN,
     zero, total, countsOf, minus, addCards, cardsOf, fullDeck, shuffled,
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
-    describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
+    describe, cardsText, breaksBomb, advise, parseCards, TIERS, TIER_CFG, TIER_ALIAS, tierOf, estimate,
     deal, pickLandlord,
     setSotaRank, setSotaFarmer, sotaAvailable,
     // 内部工具（测试与 SOTA 适配用，不参与 UI）
@@ -1925,13 +1943,10 @@ const I18N = {
     noCards: '先选牌',
     newDeal: '重新发牌',
     tierNames: {
-      free: 'free · 随手打',
-      go: 'go · 会算基本牌',
-      plus: 'plus · 会记牌',
-      pro100: 'pro100 · 算一百次',
-      pro200: 'pro200 · 算两百次',
-      pro500: 'pro500 · 算五百次',
-      pro9999: 'pro9999 · 拉满',
+      free: 'free · 新手',
+      go: 'go · 会算牌',
+      plus: 'plus · 轻度推演',
+      pro: 'pro · 中等推演',
       sota: 'sota · DouZero 冠军模型'
     },
     sotaTitle: 'DouZero 模型',
@@ -1986,7 +2001,7 @@ const I18N = {
       '跟牌压不过就过；两家连过，回到最后出牌的人重新领出。',
       '难度档只影响电脑，开局前选；托管和军师建议随时能开。'
     ],
-    tierHint: '档位越高算得越细、想得越久；pro9999 一手最多要 4 秒。sota 走 DouZero 冠军模型，一手约 0.1 秒。'
+    tierHint: '五档：free 新手、go 会算牌、plus / pro 推演越来越细（pro 一手约 40 毫秒）。sota 走 DouZero 冠军模型，一手约 0.1 秒。'
   },
   en: {
     appName: 'Dou Dizhu',
@@ -2067,13 +2082,10 @@ const I18N = {
     noCards: 'Pick cards first',
     newDeal: 'Redeal',
     tierNames: {
-      free: 'free · random',
-      go: 'go · basic',
-      plus: 'plus · counting',
-      pro100: 'pro100 · 100 sims',
-      pro200: 'pro200 · 200 sims',
-      pro500: 'pro500 · 500 sims',
-      pro9999: 'pro9999 · max',
+      free: 'free · beginner',
+      go: 'go · card sense',
+      plus: 'plus · light search',
+      pro: 'pro · deeper search',
       sota: 'sota · DouZero champion'
     },
     sotaTitle: 'DouZero model',
@@ -2128,7 +2140,7 @@ const I18N = {
       'You may pass when following; two passes end the trick and the last player leads.',
       'Difficulty only affects the bots, chosen before the deal. Auto-play and coach are always available.'
     ],
-    tierHint: 'Higher tiers think longer; pro9999 can take up to 4 seconds per move. sota uses the DouZero champion model, about 0.1s per move.'
+    tierHint: 'Five tiers: free (beginner), go (card sense), plus / pro (deeper search, pro about 40ms per move). sota uses the DouZero champion model, about 0.1s per move.'
   }
 }
 
@@ -3473,7 +3485,8 @@ function PanelView() {
   const [tiers, setTiers] = useState(() => {
     try {
       const raw = localStorage.getItem('ddz-tiers')
-      if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length === 3) return v }
+      // 老存档里可能还是 pro100/pro200/pro500/pro9999，用 tierOf 迁到新档位名
+      if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length === 3) return v.map(t => DDZ.tierOf(t)) }
     } catch { /* ignore */ }
     return ['go', 'go', 'go']
   })

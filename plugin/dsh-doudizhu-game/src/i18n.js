@@ -79,13 +79,10 @@ const I18N = {
     noCards: '先选牌',
     newDeal: '重新发牌',
     tierNames: {
-      free: 'free · 随手打',
-      go: 'go · 会算基本牌',
-      plus: 'plus · 会记牌',
-      pro100: 'pro100 · 算一百次',
-      pro200: 'pro200 · 算两百次',
-      pro500: 'pro500 · 算五百次',
-      pro9999: 'pro9999 · 拉满',
+      free: 'free · 新手',
+      go: 'go · 会算牌',
+      plus: 'plus · 轻度推演',
+      pro: 'pro · 中等推演',
       sota: 'sota · DouZero 冠军模型'
     },
     sotaTitle: 'DouZero 模型',
@@ -140,7 +137,7 @@ const I18N = {
       '跟牌压不过就过；两家连过，回到最后出牌的人重新领出。',
       '难度档只影响电脑，开局前选；托管和军师建议随时能开。'
     ],
-    tierHint: '档位越高算得越细、想得越久；pro9999 一手最多要 4 秒。sota 走 DouZero 冠军模型，一手约 0.1 秒。'
+    tierHint: '五档：free 新手、go 会算牌、plus / pro 推演越来越细（pro 一手约 40 毫秒）。sota 走 DouZero 冠军模型，一手约 0.1 秒。'
   },
   en: {
     appName: 'Dou Dizhu',
@@ -221,13 +218,10 @@ const I18N = {
     noCards: 'Pick cards first',
     newDeal: 'Redeal',
     tierNames: {
-      free: 'free · random',
-      go: 'go · basic',
-      plus: 'plus · counting',
-      pro100: 'pro100 · 100 sims',
-      pro200: 'pro200 · 200 sims',
-      pro500: 'pro500 · 500 sims',
-      pro9999: 'pro9999 · max',
+      free: 'free · beginner',
+      go: 'go · card sense',
+      plus: 'plus · light search',
+      pro: 'pro · deeper search',
       sota: 'sota · DouZero champion'
     },
     sotaTitle: 'DouZero model',
@@ -282,6 +276,6 @@ const I18N = {
       'You may pass when following; two passes end the trick and the last player leads.',
       'Difficulty only affects the bots, chosen before the deal. Auto-play and coach are always available.'
     ],
-    tierHint: 'Higher tiers think longer; pro9999 can take up to 4 seconds per move. sota uses the DouZero champion model, about 0.1s per move.'
+    tierHint: 'Five tiers: free (beginner), go (card sense), plus / pro (deeper search, pro about 40ms per move). sota uses the DouZero champion model, about 0.1s per move.'
   }
 }

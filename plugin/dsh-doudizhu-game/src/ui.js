@@ -302,7 +302,8 @@ function PanelView() {
   const [tiers, setTiers] = useState(() => {
     try {
       const raw = localStorage.getItem('ddz-tiers')
-      if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length === 3) return v }
+      // 老存档里可能还是 pro100/pro200/pro500/pro9999，用 tierOf 迁到新档位名
+      if (raw) { const v = JSON.parse(raw); if (Array.isArray(v) && v.length === 3) return v.map(t => DDZ.tierOf(t)) }
     } catch { /* ignore */ }
     return ['go', 'go', 'go']
   })
