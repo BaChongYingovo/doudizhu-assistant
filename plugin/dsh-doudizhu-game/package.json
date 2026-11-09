@@ -30,7 +30,8 @@
     "build.mjs",
     "cordis.patch.yml",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": "./lib/index.js",
