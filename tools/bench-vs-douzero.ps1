@@ -33,8 +33,10 @@ function Wait-PortFree([int]$port) {
 
 function Start-Bridge([int]$port, [string]$farmerFlag) {
   if (-not (Wait-PortFree $port)) { throw "端口 $port 一直被占用" }
-  if ($farmerFlag) { $env:DZ_SOTA_FARMER = '1' } else { Remove-Item Env:DZ_SOTA_FARMER -ErrorAction SilentlyContinue }
-  Start-Process -FilePath node -ArgumentList 'tools/bridge.mjs', $port -WindowStyle Hidden
+  # 环境变量只给这一个子进程，别用 $env: 污染父进程 —— 否则两个 bridge 会同时带上 DZ_SOTA_FARMER，
+  # 被评测方（8801）的农民位也会去用 DouZero 农民模型，测出来的就不是产品行为了。
+  $prefix = if ($farmerFlag) { 'set DZ_SOTA_FARMER=1&& ' } else { '' }
+  Start-Process -FilePath cmd -ArgumentList '/c', ($prefix + "node tools/bridge.mjs $port") -WindowStyle Hidden
   Start-Sleep -Seconds 3
   $h = Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -TimeoutSec 10
   Write-Host ("bridge {0} sha={1} sota={2}" -f $port, $h.sha, $h.sota)
