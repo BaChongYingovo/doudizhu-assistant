@@ -74,7 +74,9 @@ def random_action(state, rng):
     return rng.choice(legal)
 
 
-def play_one(env, seat, port, rng, opp='random', tier='go', opp_tier='go'):
+def play_one(env, seat, port, rng, opp='random', tier='go', opp_tier='go', opp_port=None):
+    if opp_port is None:
+        opp_port = port
     state, pid = env.reset()
     steps = 0
     illegal = 0
@@ -102,7 +104,7 @@ def play_one(env, seat, port, rng, opp='random', tier='go', opp_tier='go'):
                 aid = random_action(state, rng)
             elif opp == 'bridge':
                 try:
-                    oaid, _ = our_action(state, pid, port, opp_tier)
+                    oaid, _ = our_action(state, pid, opp_port, opp_tier)
                 except Exception:
                     oaid = None
                 aid = oaid if oaid is not None else random_action(state, rng)
@@ -133,10 +135,12 @@ def main():
     ap.add_argument('--games', type=int, default=100)
     ap.add_argument('--seat', type=int, default=0, choices=[0, 1, 2])
     ap.add_argument('--opp', default='random', choices=['random', 'min', 'bridge'])
-    ap.add_argument('--opp-tier', default='go', choices=['free', 'go', 'plus', 'pro', 'ultra'])
-    ap.add_argument('--tier', default='go', choices=['free', 'go', 'plus', 'pro', 'ultra'])
+    ap.add_argument('--opp-tier', default='go', help='对手档位：free/go/plus/pro100..pro9999/sota（不校验，引擎自己解析）')
+    ap.add_argument('--tier', default='go', help='我方档位：free/go/plus/pro100..pro9999/sota')
     ap.add_argument('--seed', type=int, default=1)
     ap.add_argument('--port', type=int, default=8791)
+    ap.add_argument('--opp-port', type=int, default=None,
+                    help='bridge 对手用的端口（默认与 --port 相同）；可以让对手跑另一份引擎/策略')
     ap.add_argument('--out', default='')
     ap.add_argument('--quiet', action='store_true')
     args = ap.parse_args()
@@ -146,7 +150,8 @@ def main():
     results = []
     t0 = time.time()
     for g in range(args.games):
-        r = play_one(env, args.seat, args.port, rng, args.opp, args.tier, args.opp_tier)
+        r = play_one(env, args.seat, args.port, rng, args.opp, args.tier, args.opp_tier,
+                     opp_port=args.opp_port)
         r['game'] = g
         results.append(r)
         if not args.quiet and (g + 1) % 20 == 0:
