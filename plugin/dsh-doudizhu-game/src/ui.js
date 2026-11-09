@@ -326,6 +326,28 @@ function PanelView() {
   const adviceTimerRef = useRef(null)
   const st = stRef.current
 
+  /* -------- sota 档：DouZero 权重 -------- */
+  const [sota, setSota] = useState(() => (typeof SOTA !== 'undefined' ? SOTA.status() : { status: 'idle', progress: 0, error: '' }))
+
+  useEffect(() => {
+    if (typeof SOTA === 'undefined') return undefined
+    const off = SOTA.onStatus((s) => {
+      setSota(s)
+      if (s.status === 'ready') DDZ.setSotaRank(SOTA.rank)
+    })
+    if (SOTA.ready()) DDZ.setSotaRank(SOTA.rank)
+    return off
+  }, [])
+
+  // 选了 sota 档才去下权重；下载中/已就绪不重复触发
+  useEffect(() => {
+    if (typeof SOTA === 'undefined') return
+    if (tiers.indexOf('sota') < 0) return
+    if (SOTA.ready()) { DDZ.setSotaRank(SOTA.rank); return }
+    if (sota.status === 'downloading' || sota.status === 'ready') return
+    SOTA.load().catch(() => { /* 状态已经通过 onStatus 落到界面 */ })
+  }, [tiers, sota.status])
+
   function toastMsg(msg) {
     setToast(msg)
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -670,6 +692,28 @@ function PanelView() {
     const wins = (stats.total && stats.total.wins) || 0
     const losses = Math.max(0, total - wins)
     const rate = total ? Math.round(wins / total * 100) : 0
+    const wantSota = tiers.indexOf('sota') >= 0
+    const sotaRow = () => {
+      const p = Math.round((sota.progress || 0) * 100)
+      const text = sota.status === 'ready' ? T.sotaReady
+        : sota.status === 'downloading' ? fmt(T.sotaLoading, { p: p })
+          : sota.status === 'error' ? fmt(T.sotaError, { msg: sota.error || '?' })
+            : T.sotaIdle
+      return h('div', { className: 'ddz-statsline ddz-sota-row' },
+        h('span', null, T.sotaTitle + ' · ', h('b', { className: sota.status === 'ready' ? 'win' : (sota.status === 'error' ? 'lose' : '') }, text)),
+        sota.status === 'error'
+          ? h('button', {
+            className: 'ddz-btn ddz-btn--ghost',
+            onClick: () => { SOTA.reset(); SOTA.load().catch(() => { /* 状态回界面 */ }) }
+          }, T.sotaRetry)
+          : null,
+        sota.status === 'idle'
+          ? h('button', {
+            className: 'ddz-btn ddz-btn--ghost',
+            onClick: () => { SOTA.load().catch(() => { /* 状态回界面 */ }) }
+          }, T.sotaDownload)
+          : null)
+    }
     return h('section', { className: 'ddz-screen ddz-setup' + (view === 'setup' ? ' is-on' : '') },
       h('div', { className: 'ddz-setup-card' },
         h(WhaleSvg, { cls: 'ddz-setup-watermark' }),
@@ -696,6 +740,7 @@ function PanelView() {
                 setTiers(next)
               },
             }, TIERS.map(t => h('option', { key: t, value: t }, T.tierNames[t] || t)))))),
+        wantSota ? sotaRow() : null,
         h('div', { className: 'ddz-setup-actions' },
           h('button', { className: 'ddz-btn ddz-btn--primary', onClick: () => startGame() }, T.start),
           h('button', { className: 'ddz-btn ddz-btn--ghost', onClick: () => setModal('help') }, T.help)),

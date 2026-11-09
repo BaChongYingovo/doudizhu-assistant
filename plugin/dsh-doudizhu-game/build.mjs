@@ -17,6 +17,7 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
 const engine = read('src/engine.js')
 const game = read('src/game.js')
+const sota = read('src/sota.js')
 const i18n = read('src/i18n.js')
 const style = read('src/style.js')
 const ui = read('src/ui.js')
@@ -65,7 +66,15 @@ parts.push(
 parts.push(i18n)
 parts.push(style)
 
-parts.push('    /* ================= 4. 界面 ================= */')
+parts.push('    /* ================= 4. sota 档（DouZero 纯 JS 前向） ================= */')
+parts.push('    const __sota = { exports: {} }')
+parts.push('    ;(function (module, exports) {')
+parts.push(sota)
+parts.push('    })(__sota, __sota.exports)')
+parts.push('    const SOTA = __sota.exports')
+parts.push('')
+
+parts.push('    /* ================= 5. 界面 ================= */')
 parts.push(ui)
 
 parts.push(
@@ -152,6 +161,7 @@ const checks = [
   ['__ModuleLoader__.load', code.includes('__ModuleLoader__.load')],
   ['DDZ 导出', /const DDZ = __engine\.exports/.test(code)],
   ['GameCore 可调用', /GameCore\(DDZ\)/.test(code)],
+  ['SOTA 导出', /const SOTA = __sota\.exports/.test(code)],
   ['PanelView 定义', /function PanelView\s*\(/.test(code)],
   ['apply 定义', /function apply\(ctx\)/.test(code)],
   ['exports.inject', /exports\.inject = inject/.test(code)],

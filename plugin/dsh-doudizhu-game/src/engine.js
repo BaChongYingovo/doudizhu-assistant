@@ -811,11 +811,12 @@
     return { pass: false, move: best.m, plan: best.restPlan, options, reason, notes };
   }
 
-  /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 ---------------- */
+  /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 / sota ---------------- */
 
-  const TIERS = ['free', 'go', 'plus', 'pro100', 'pro200', 'pro500', 'pro9999'];
+  const TIERS = ['free', 'go', 'plus', 'pro100', 'pro200', 'pro500', 'pro9999', 'sota'];
 
   // 每档的思考预算：budget = 最多推演多少次，ms = 每手最多花多久
+  // sota 不做蒙特卡洛：它是 DouZero WP 神经网络的一次前向（约 30–80ms），预算只作上限提示
   const TIER_CFG = {
     free:    { budget: 0,    ms: 0 },
     go:      { budget: 0,    ms: 0 },
@@ -823,7 +824,8 @@
     pro100:  { budget: 100,  ms: 500 },
     pro200:  { budget: 200,  ms: 1000 },
     pro500:  { budget: 500,  ms: 2000 },
-    pro9999: { budget: 9999, ms: 4000 }
+    pro9999: { budget: 9999, ms: 4000 },
+    sota:    { budget: 0,    ms: 4000 }
   };
 
   function tierOf(t) {
@@ -1057,8 +1059,88 @@
     };
   }
 
+  /* ---------------- sota 档：DouZero WP（外部注入的推理钩子） ----------------
+   * 引擎本身不碰 ONNX/网络：插件把 src/sota.js 的 rank() 注进来，
+   * 权重没下载好、推理抛错、农民位（实测不如启发式）都回退启发式，并写明原因。
+   */
+
+  let sotaRankFn = null;
+  // 农民位是否也交给 DouZero。默认 false：ai/SOTA.md 实测 300 副，农民位 DouZero 0.800
+  // 低于本引擎启发式 0.898（对 plus 档 0.443 对 0.560），换上下家也没变好，
+  // 原因是它的农民模型学的是「队友也强」的配合。想复现实验时再打开。
+  let sotaFarmer = false;
+
+  function setSotaRank(fn) {
+    sotaRankFn = typeof fn === 'function' ? fn : null;
+  }
+
+  function setSotaFarmer(on) { sotaFarmer = !!on; }
+
+  function sotaAvailable() { return !!sotaRankFn; }
+
+  function sotaAdvice(state) {
+    const base = heuristicAdvice(state);
+    const ctx = state && state.sotaCtx;
+    if (!sotaRankFn || !ctx) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）DouZero 权重还没加载，这一手按启发式走：' + (base.reason || '');
+      return base;
+    }
+    if (ctx.position !== 'landlord' && !sotaFarmer) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）农民位按实测回退启发式（DouZero 农民 0.800 < 本引擎 0.898）。' + (base.reason || '');
+      return base;
+    }
+    const lm = state.last && state.last.move ? state.last.move : null;
+    const moves = generateMoves(state.hand, lm);
+    const canPass = !!lm;
+    if (!moves.length) {
+      base.tier = 'sota';
+      base.reason = '（sota 档）要不起。' + (base.reason || '');
+      return base;
+    }
+    const counts = moves.map(m => { const c = zero(); for (const r of m.cards) c[r - 3]++; return c; });
+    // 跟牌时把「过」也交给模型：DouZero 的动作空间里过牌就是全零那行
+    if (canPass) counts.push(zero());
+    let index;
+    try {
+      const r = sotaRankFn(ctx, counts);
+      index = r && typeof r.index === 'number' ? r.index : -1;
+    } catch (err) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）推理失败，回退启发式：' + ((err && err.message) || err);
+      return base;
+    }
+    if (index < 0 || index >= counts.length) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）没给出合法动作，回退启发式。';
+      return base;
+    }
+    if (index === moves.length) {
+      return {
+        pass: true, move: null, plan: base.plan,
+        reason: '（sota 档）DouZero WP 认为这手该过。',
+        options: (base.options || []).slice(0, 4), notes: base.notes || [],
+        tier: 'sota'
+      };
+    }
+    const chosen = moves[index];
+    return {
+      pass: false, move: chosen,
+      plan: planCount(minus(state.hand, chosen.cards)),
+      reason: '（sota 档）DouZero WP 选「' + describe(chosen) + '」。',
+      options: (base.options || []).slice(0, 4), notes: base.notes || [],
+      tier: 'sota'
+    };
+  }
+
   function advise(state, opts) {
     const tier = tierOf(opts && opts.tier);
+    if (tier === 'sota') return sotaAdvice(state);
     if (tier === 'free') return freeAdvice(state);
     const base = heuristicAdvice(state);
     if (tier === 'go') { base.tier = 'go'; return base; }
@@ -1102,6 +1184,7 @@
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
     describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
     deal, pickLandlord,
+    setSotaRank, setSotaFarmer, sotaAvailable,
     // 内部工具（测试与 SOTA 适配用，不参与 UI）
     sampleHands, greedyPick, greedyPlans
   };

@@ -403,7 +403,7 @@ function GameCore(DDZ) {
         if (v !== undefined) knownHands[s] = countsOrNull(v)
       }
     }
-    return {
+    const out = {
       hand: st.hands[seat],
       me: seat,
       landlord: st.landlord,
@@ -414,6 +414,81 @@ function GameCore(DDZ) {
       open,
       knownHands
     }
+    // 只有 sota 档才付这份转换的代价，其它档行为完全不变
+    if (st.tiers && DDZ.tierOf(st.tiers[seat]) === 'sota') out.sotaCtx = sotaCtx(st, seat)
+    return out
+  }
+
+  /* ------------------------------------------------------------------ *
+   * sota 档的观测：把对局还原成 DouZero 要的 ctx
+   *
+   * 与 tools/bridge.mjs 的转换逐项一致（那边已用 500/300 副实测过）：
+   *   history     每一次出牌/过牌按顺序一帧（过牌是全零），z 取最近 15 帧
+   *   perSeat     每家出过的牌（不含手牌）
+   *   lastBySeat  每家最近一次出的牌
+   *   otherCounts 我看不到的牌 = 全副 - 我的手牌 - 场上所有出牌
+   * 农民位也照样给出 ctx（引擎按实测结论在农民位回退启发式，强制实验时才用）。
+   * ------------------------------------------------------------------ */
+
+  function fullCounts() {
+    const c = zero()
+    for (let i = 0; i < 13; i++) c[i] = 4
+    c[13] = 1
+    c[14] = 1
+    return c
+  }
+
+  function sotaCtx(st, seat) {
+    const landlord = st.landlord
+    const upSeat = (landlord + 2) % 3
+    const downSeat = (landlord + 1) % 3
+    const perSeat = [zero(), zero(), zero()]
+    const lastBySeat = [null, null, null]
+    const seq = []
+    let bombs = 0
+    for (const e of (st.replay || [])) {
+      if (e.type === 'play') {
+        const c = DDZ.countsOf(e.cards)
+        seq.push(c)
+        for (let i = 0; i < N; i++) perSeat[e.seat][i] += c[i]
+        lastBySeat[e.seat] = c
+        if (e.moveType === 'bomb' || e.moveType === 'rocket') bombs++
+      } else if (e.type === 'pass') {
+        seq.push(zero())
+      }
+    }
+    const hand = st.hands[seat]
+    const played = (st.played && st.played.length === N) ? st.played : zero()
+    const full = fullCounts()
+    const other = zero()
+    for (let i = 0; i < N; i++) other[i] = Math.max(0, full[i] - hand[i] - played[i])
+
+    // 最近一手别人出的牌；轮到我领出时是全零
+    const lastCounts = (st.last && st.last.seat !== seat && st.last.move)
+      ? DDZ.countsOf(st.last.move.cards) : zero()
+
+    const seatCounts = [total(st.hands[0]), total(st.hands[1]), total(st.hands[2])]
+    const empty = zero()
+    const base = {
+      myCounts: hand.slice(), otherCounts: other,
+      lastCounts, bombNum: Math.min(bombs, 14),
+      history: seq.map(c => ({ counts: c }))
+    }
+    if (seat === landlord) {
+      return Object.assign(base, {
+        position: 'landlord',
+        playedCounts: { landlord_up: perSeat[upSeat], landlord_down: perSeat[downSeat] },
+        numLeft: { landlord_up: seatCounts[upSeat], landlord_down: seatCounts[downSeat] }
+      })
+    }
+    const teammate = seat === upSeat ? downSeat : upSeat
+    return Object.assign(base, {
+      position: seat === upSeat ? 'landlord_up' : 'landlord_down',
+      playedCounts: { landlord: perSeat[landlord], teammate: perSeat[teammate] },
+      lastLandlordCounts: lastBySeat[landlord] || empty,
+      lastTeammateCounts: lastBySeat[teammate] || empty,
+      numLeft: { landlord: seatCounts[landlord], teammate: seatCounts[teammate] }
+    })
   }
 
   /* ------------------------------------------------------------------ *
@@ -544,7 +619,7 @@ function GameCore(DDZ) {
     bidSeat, bidOptions, applyBid, aiBid,
     aiDouble, applyDouble, applyOpen,
     legalMoves, applyPlay, applyPass,
-    computeResult, adviseState, aiMove, fallbackMove, hintList,
+    computeResult, adviseState, aiMove, fallbackMove, hintList, sotaCtx,
     seatCounts, nextSeat, prevSeat
   }
 }
