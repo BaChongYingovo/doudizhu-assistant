@@ -4,11 +4,29 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const DDZ = require('./engine.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
-const CT = path.join(ROOT, 'research', 'dist', 'rlcard-1.2.0', 'rlcard',
-  'games', 'doudizhu', 'jsondata', 'card_type.json');
+
+function resolveCardType() {
+  const bundled = path.join(ROOT, 'research', 'dist', 'rlcard-1.2.0', 'rlcard',
+    'games', 'doudizhu', 'jsondata', 'card_type.json');
+  const candidates = [process.env.RLCARD_CARD_TYPE, bundled].filter(Boolean);
+  for (const c of candidates) if (fs.existsSync(c)) return c;
+  // pip install rlcard==1.2.0 会在 import 时把 jsondata.zip 解到包目录。
+  try {
+    const found = execFileSync('python3', ['-c', [
+      'import os, rlcard',
+      'root = os.path.dirname(rlcard.__file__)',
+      'print(os.path.join(root, "games", "doudizhu", "jsondata", "card_type.json"))',
+    ].join('\n')], { encoding: 'utf8' }).trim();
+    if (found && fs.existsSync(found)) return found;
+  } catch (e) { /* 下面统一报错 */ }
+  throw new Error('找不到 card_type.json。设置 RLCARD_CARD_TYPE，或 pip install rlcard==1.2.0，或把文件放到 research/dist/rlcard-1.2.0/rlcard/games/doudizhu/jsondata/');
+}
+
+const CT = resolveCardType();
 const data = JSON.parse(fs.readFileSync(CT, 'utf-8'));
 
 const CH = {};

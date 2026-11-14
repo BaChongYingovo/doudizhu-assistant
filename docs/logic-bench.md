@@ -1,7 +1,7 @@
 # 斗地主引擎逻辑基准（500 副矩阵 + 消融）
 
-> 生成时间：2026-11-09（Asia/Shanghai）
-> 执行者：exec-verify（team ddz-logic / t13）
+> 生成时间：2026-11-09（Asia/Shanghai）；2026-11-14 在 Linux 上按同一种子复核，胜局数与 §3 一致，见 §9。
+> 执行者：exec-verify（team ddz-logic / t13）；§9 为同口径复核。
 > 本文档只记录命令与产物数字，不改 engine.js / game.js / ui.js。所有 ab-run 均由 `tools/ab-run.ps1` 的 `/health` 引擎指纹校验把关；看到 `FAIL start ... (want sha ...)` 一律记录、不绕过脚本。
 
 ---
@@ -218,3 +218,78 @@ powershell -ExecutionPolicy Bypass -File tools/bench-vs-douzero.ps1 -Games 300 -
   出牌序列有偏差（例如中途 pass 记录），对手强度会被低估——这一点已由 `sota vs plus 0.697`
   的独立结果交叉验证，量级可信。
 - PerfectDou 因编码器依赖 Linux `.so`，Windows 下无法当对手，暂缺这一强基线。
+- **本节不能在 `logic/ai-strengthen` 上单独复现。** `tools/bench-vs-douzero.ps1` 要求 bridge 认 `tier=sota` 和 `DZ_SOTA_FARMER`，这两处实现在 `logic/l2-sota`（PR #3），不在本分支。下面的 DouZero 数字是 2026-11-09 的历史记录，**不是** L1 合并门禁。L1 门禁只看 §3 / §9 的 min 对手。
+
+---
+
+## 9. 2026-11-14 复核（Linux，500 副已跑完）
+
+同一份 `engine.js`（sha12 `fca77dcfc89b`，自 `0f4125b` 起字节未变）和同一份 `tools/engine.baseline.js`（sha12 `e45178236455`，等于 `main` `c61600b` 的 `src/engine.js`）。裁判是 pip 的 `rlcard==1.2.0`。Node v22.23.4，Python 3.12.3。`--seed 1`，`--tier go`。全矩阵一次跑完，墙钟约 106 秒（含下面的确定性重复），**没有用 200 副代替 500 副**。
+
+### 9.1 命令
+
+仓库根目录。起桥后先看 `GET /health` 的 `sha` 是不是上面的 12 位，再跑竞技场。`tools/ab-run.ps1` 仍是 Windows 入口；这次在 Linux 上用等价命令。
+
+```bash
+# current
+node tools/bridge.mjs 8791
+# base（另开一次，先停掉 8791）
+DDZ_ENGINE=tools/engine.baseline.js node tools/bridge.mjs 8791
+
+PYTHONHASHSEED=0 python3 arena/arena.py --games 500 --seat 0 --opp min --tier go --seed 1 --port 8791
+PYTHONHASHSEED=0 python3 arena/arena.py --games 500 --seat 1 --opp min --tier go --seed 1 --port 8791
+PYTHONHASHSEED=0 python3 arena/arena.py --games 500 --seat 0 --opp bridge --tier go --seed 1 --port 8791
+PYTHONHASHSEED=0 python3 arena/arena.py --games 500 --seat 1 --opp bridge --tier go --seed 1 --port 8791
+```
+
+`node tools/diff-moves.cjs 200`：优先读 `research/dist/rlcard-1.2.0/.../card_type.json`，没有就向已安装的 `rlcard==1.2.0` 要同一份文件（`import rlcard` 会解开包里的 `jsondata.zip`）。
+
+### 9.2 500 副结果
+
+| 场景 | 引擎 | 胜/总 | 胜率 | 非法兜底 | 平均决策 ms | 指纹 |
+|---|---|---|---|---|---|---|
+| landlord / min | base | 468/500 | 0.936 | 0 | 0.43 | `e45178236455` |
+| landlord / min | current | 473/500 | 0.946 | 0 | 0.41 | `fca77dcfc89b` |
+| farmer / min | base | 445/500 | 0.890 | 0 | 0.40 | `e45178236455` |
+| farmer / min | current | 449/500 | 0.898 | 0 | 0.37 | `fca77dcfc89b` |
+| landlord / bridge | base | 266/500 | 0.532 | 0 | 0.59 | `e45178236455` |
+| landlord / bridge | current | 261/500 | 0.522 | 0 | 0.59 | `fca77dcfc89b` |
+| farmer / bridge | base | 234/500 | 0.468 | 0 | 0.62 | `e45178236455` |
+| farmer / bridge | current | 239/500 | 0.478 | 0 | 0.61 | `fca77dcfc89b` |
+
+胜局数与 §3 逐格相同。平均决策 ms 比 §3 小，是这台机器更快，不改胜负。
+
+**门禁**（绝对下限 landlord ≥ 0.945、farmer ≥ 0.775，并且不低于 base）：
+
+- 地主 473/500 = 0.946。472/500 = 0.944，过不了 0.945，所以 473 是刚好过线的整数。本次 473，过线。
+- 农民 449/500 = 0.898 ≥ 0.775，也高于 base 的 445/500。
+- bridge 仍是自对弈：地主 current 比 base 少 5 局，农民多 5 局，两侧抵消。不拿它当门禁。
+
+### 9.3 确定性与差分
+
+| 检查 | 结果 |
+|---|---|
+| current、landlord / min、100 副、`PYTHONHASHSEED=0` 连跑两次 | 逐局 `(payoff, steps, illegal)` 不一致 **0** |
+| 同一 100 副改 `PYTHONHASHSEED=1` | 不一致 **0** |
+| current、landlord / min 与 farmer / min 各 500 副再跑一遍 | 不一致 **0 / 0** |
+| `node tools/diff-moves.cjs 200`（27471 条权威动作） | 漏解 **0** / 多出 **0** / `classify` null **0** |
+
+`arena.py` 的 min 对手按 `(张数, 牌面)` 取最小、`find_action` 按 id 排序之后，这 100 副不再随 `PYTHONHASHSEED` 变。脚本仍固定 `PYTHONHASHSEED=0`。
+
+### 9.4 单元测试
+
+`npm test`（`plugin/dsh-doudizhu-game`）现在会跑下面前 9 条。2026-11-14 全部退出码 0：
+
+| 命令 | 通过 | 失败 |
+|---|---|---|
+| `node test/game.test.mjs` | 12 | 0 |
+| `node test/render.test.mjs` | 全部 | 0 |
+| `node test/host-boot.test.mjs` | 全部 | 0 |
+| `node test/check-keys.mjs` | 全部 | 0 |
+| `node test/movegen.test.mjs` | 45 | 0 |
+| `node test/advise-heuristic.test.mjs` | 18 | 0 |
+| `node test/sample-hands.test.mjs` | 10 | 0 |
+| `node test/bid-strength.test.mjs` | 13 | 0 |
+| `node test/fallback-move.test.mjs` | 15 | 0 |
+
+`sampleHands` 的 54 张守恒和 `test/sample-hands.test.mjs` 已在 `ee824e0` / `e409560`，本分支没有未提交的采样修复。`src/ui.js`、`src/style.js` 相对 `main` 无差异；`src/game.js` 的改动是叫分/加倍、信息通道和兜底出牌，不是出牌界面。
