@@ -3,12 +3,12 @@
  *
  *   node test/sota.test.mjs
  *
- * 依赖 ai/models/douzero_WP/*.onnx 与 ai/node_modules/onnxruntime-node；
- * 缺了就跳过数值对齐那一段（下载/接线测试照跑），不算失败。
+ * landlord.onnx 不在本地时按 ai/models/MANIFEST.json 下载并核对 sha256。
+ * 没装 ai/node_modules/onnxruntime-node 时跳过数值对齐那一段，不算失败。
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { webcrypto } from 'node:crypto'
+import { createHash, webcrypto } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -23,6 +23,43 @@ function ok(cond, name, extra) {
 
 /* ---------------- 加载 src/sota.js（与 build.mjs 嵌入的是同一份） ---------------- */
 const sotaCode = fs.readFileSync(path.join(root, 'src', 'sota.js'), 'utf8')
+const manifest = JSON.parse(fs.readFileSync(path.join(repo, 'ai', 'models', 'MANIFEST.json'), 'utf8'))
+const landlordMeta = manifest.files.find((f) => f.file === 'landlord.onnx')
+ok(!!landlordMeta, 'MANIFEST 有 landlord.onnx')
+ok(sotaCode.includes(landlordMeta.sha256), 'sota.js 内嵌 sha256 与 MANIFEST 一致', landlordMeta.sha256)
+ok(sotaCode.includes(manifest.source), 'sota.js 下载地址与 MANIFEST.source 一致')
+ok(manifest.license.includes('Apache-2.0'), 'MANIFEST 标明 Apache-2.0', manifest.license)
+
+async function ensureLandlord() {
+  const file = path.join(modelDir, landlordMeta.file)
+  const sha = (buf) => createHash('sha256').update(buf).digest('hex')
+  if (fs.existsSync(file)) {
+    const got = fs.readFileSync(file)
+    if (got.length === landlordMeta.bytes && sha(got) === landlordMeta.sha256) return got
+  }
+  fs.mkdirSync(modelDir, { recursive: true })
+  const bases = [
+    manifest.source,
+    'https://hf-mirror.com/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/'
+  ]
+  const errors = []
+  for (const base of bases) {
+    const url = base + landlordMeta.file
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const got = Buffer.from(await res.arrayBuffer())
+      if (got.length !== landlordMeta.bytes) throw new Error('体积 ' + got.length + ' ≠ ' + landlordMeta.bytes)
+      if (sha(got) !== landlordMeta.sha256) throw new Error('sha256 不符')
+      fs.writeFileSync(file, got)
+      console.log('  · 已下载并校验 ' + url)
+      return got
+    } catch (e) {
+      errors.push(url + ' ' + (e && e.message))
+    }
+  }
+  throw new Error('landlord.onnx 下载或校验失败：' + errors.join(' | '))
+}
 
 function loadSota(env) {
   const shim = { exports: {} }
@@ -32,7 +69,7 @@ function loadSota(env) {
 }
 
 /* ---------------- 1. ONNX 解析 =--------------- */
-const landlordBytes = fs.readFileSync(path.join(modelDir, 'landlord.onnx'))
+const landlordBytes = await ensureLandlord()
 const SOTA = loadSota({ fetch: async () => { throw new Error('测试不联网') } })
 
 console.log('ONNX 解析')

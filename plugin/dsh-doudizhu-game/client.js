@@ -2703,9 +2703,10 @@ const CSS = String.raw`
 /*!
  * 斗地主军师 · SOTA 档（DouZero）
  *
- * 这里不引入 onnxruntime-web：DouZero 的结构只有「一个 LSTM + 六层全连接」，
- * 权重本来就是 float32，直接自己解析 ONNX 的 initializer、自己做前向，
- * 省掉 8–15MB 的 wasm 运行时，也不用 CDN。
+ * 这里不引入 onnxruntime-web@1.31.1。2026-11-14 量过这个包：npm 解包
+ * 150,622,959 字节（143.6 MiB），四个 wasm 合计 86.8 MiB，最小的
+ * ort-wasm-simd-threaded.wasm 也有 14,848,852 字节。DouZero 只有一个 LSTM
+ * 加六层全连接，权重是 float32，直接解析 ONNX initializer 并手写前向。
  *
  * 编码规则逐行对齐 research/dist/DouZero-main/douzero/env/env.py 的 get_obs()，
  * 与 ai/douzero.mjs（Node 侧，已用 ai/golden-encoder.json 逐维对齐过）共用同一份实现。

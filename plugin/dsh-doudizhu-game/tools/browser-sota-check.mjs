@@ -2,7 +2,10 @@
  * 真浏览器验证：把插件三份源码丢进 Chrome，走完整链路
  * 下载权重 → sha256 校验 → 写 Cache Storage → 解析 ONNX → 前向 → 引擎 sota 建议
  *
- *   node tools/browser-sota-check.mjs
+ *   node plugin/dsh-doudizhu-game/tools/browser-sota-check.mjs
+ *
+ * Chrome 按 CHROME_PATH、PATH 和常见安装位置找。容器里默认加 --no-sandbox，
+ * 设 CHROME_NO_SANDBOX=0 可以关掉。
  *
  * 结果写到同目录 report.json；失败也会写（带错误栈）。
  */
@@ -109,15 +112,31 @@ const server = http.createServer((req, res) => {
   res.writeHead(404).end('no')
 })
 
-const chromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+function findChrome() {
+  const fromEnv = process.env.CHROME_PATH
+  if (fromEnv && fs.existsSync(fromEnv)) return fromEnv
+  const names = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'chrome.exe']
+  const dirs = ['/usr/local/bin', '/usr/bin', '/opt/google/chrome', 'C:\\Program Files\\Google\\Chrome\\Application']
+  for (const dir of dirs) {
+    for (const name of names) {
+      const candidate = path.join(dir, name)
+      if (fs.existsSync(candidate)) return candidate
+    }
+  }
+  throw new Error('找不到 Chrome。设置 CHROME_PATH 指向可执行文件')
+}
+
+const chromePath = findChrome()
 let chrome
 server.listen(PORT, '127.0.0.1', () => {
-  chrome = spawn(chromePath, [
+  const args = [
     '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions',
     '--user-data-dir=' + path.join(here, 'chrome-profile'),
-    'http://127.0.0.1:' + PORT + '/'
-  ], { stdio: 'ignore' })
-  console.log('chrome pid ' + chrome.pid + '，等待 report.json …')
+  ]
+  if (process.env.CHROME_NO_SANDBOX !== '0') args.push('--no-sandbox', '--disable-dev-shm-usage')
+  args.push('http://127.0.0.1:' + PORT + '/')
+  chrome = spawn(chromePath, args, { stdio: 'ignore' })
+  console.log('chrome ' + chromePath + ' pid ' + chrome.pid + '，等待 report.json …')
 })
 
 const t0 = Date.now()

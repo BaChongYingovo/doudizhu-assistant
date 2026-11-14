@@ -47,7 +47,9 @@
 
 原计划的 `onnxruntime-web` 方案被否掉了：DouZero 的图只有「一个 LSTM + 六层全连接」
 （`research/dist/DouZero-main/douzero/dmc/models.py`），权重本来就是 float32，
-自己解析 ONNX initializer + 手写前向就够，省下 8–15 MB 的 wasm 运行时，也不需要 CDN。
+自己解析 ONNX initializer + 手写前向就够。`onnxruntime-web@1.31.1` 的 npm 包解包是
+150,622,959 字节（143.6 MiB），最小的 `ort-wasm-simd-threaded.wasm` 也有 14,848,852 字节，
+所以没有把它打进插件。
 
 插件里的实现：`plugin/dsh-doudizhu-game/src/sota.js`
 
@@ -68,6 +70,9 @@
 只看速度：`node plugin/dsh-doudizhu-game/tools/bench-sota.mjs 20`；
 真浏览器实测（Headless Chrome 走真实网络下载 + 缓存 + 前向 + 引擎建议）：
 `node plugin/dsh-doudizhu-game/tools/browser-sota-check.mjs`。
+脚本按 `CHROME_PATH`、PATH 和常见安装位置找 Chrome，不再写死 Windows 路径；容器里默认加 `--no-sandbox`（`CHROME_NO_SANDBOX=0` 可关）。
+
+2026-11-14 在 Linux / Chrome 上重跑：冷缓存从 `huggingface.co` 下载并通过 sha256，`tier: sota`、`fallback: false`，建议「单张 9」，Cache Storage 可用。耗时比下面这张旧表短，是这台机器更快。
 
 实测数字（Chrome，冷缓存）：
 
