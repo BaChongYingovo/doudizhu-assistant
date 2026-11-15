@@ -811,19 +811,33 @@
     return { pass: false, move: best.m, plan: best.restPlan, options, reason, notes };
   }
 
-  /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 ---------------- */
+  /* ---------------- 难度档：free / go / plus / pro100 / pro200 / pro500 / pro9999 / sota ---------------- */
 
-  const TIERS = ['free', 'go', 'plus', 'pro100', 'pro200', 'pro500', 'pro9999'];
+  /* 难度阶梯按「实测胜率」排，不按「推演次数」排。
+   *
+   * 旧阶梯 8 档，实测（对 DouZero WP、地主位、200 副）
+   *   free 0.05 / go 0.56 / plus 0.50 / pro100 0.56 / pro200 0.585 / pro500 0.575
+   * 三个毛病：free 低到不像在打牌；plus 反而比 go 差；pro100=go、pro500=pro200。
+   *
+   * 新阶梯 5 档，同一口径复测
+   *   free 0.135 / go 0.56 / plus 0.56 / pro 0.60 / sota 0.674
+   * 再往上加预算（700 次推演）实测 0.58 且慢 2.4 倍，所以不设 max 档。
+   */
+  const TIERS = ['free', 'go', 'plus', 'pro', 'sota'];
 
-  // 每档的思考预算：budget = 最多推演多少次，ms = 每手最多花多久
+  // budget = 最多推演多少次，ms = 每手最多花多久
+  // sota 不做蒙特卡洛：它是 DouZero WP 神经网络的一次前向，预算只作上限提示
   const TIER_CFG = {
-    free:    { budget: 0,    ms: 0 },
-    go:      { budget: 0,    ms: 0 },
-    plus:    { budget: 12,   ms: 120 },
-    pro100:  { budget: 100,  ms: 500 },
-    pro200:  { budget: 200,  ms: 1000 },
-    pro500:  { budget: 500,  ms: 2000 },
-    pro9999: { budget: 9999, ms: 4000 }
+    free: { budget: 0,   ms: 0 },
+    go:   { budget: 0,   ms: 0 },
+    plus: { budget: 60,  ms: 200 },
+    pro:  { budget: 250, ms: 600 },
+    sota: { budget: 0,   ms: 4000 }
+  };
+
+  // 旧档位名保留成别名，读老存档（localStorage ddz-tiers）不会掉回默认
+  const TIER_ALIAS = {
+    pro100: 'pro', pro200: 'pro', pro500: 'pro', pro9999: 'pro', max: 'pro'
   };
 
   function tierOf(t) {
@@ -831,6 +845,7 @@
     if (typeof t === 'string') {
       const s = t.toLowerCase();
       if (TIER_CFG[s]) return s;
+      if (TIER_ALIAS[s]) return TIER_ALIAS[s];
     }
     return 'go';
   }
@@ -977,20 +992,20 @@
     const follows = !!(state.last && state.last.seat !== state.me);
     const lm = follows ? state.last.move : null;
     const moves = generateMoves(state.hand, lm);
-    const notes = ['free 档：随手打，只顾这一手'];
+    const notes = ['free 档：只看这一手，挑最小的打'];
     if (!moves.length) {
       return { pass: true, move: null, plan: planCount(state.hand), reason: '要不起。', options: [], notes, tier: 'free' };
     }
-    let m;
-    if (Math.random() < 0.55) m = moves[Math.floor(Math.random() * moves.length)];
-    else {
-      let worst = moves[0], wr = -1;
-      for (const x of moves) {
-        const rp = planCount(minus(state.hand, x.cards));
-        if (rp > wr) { wr = rp; worst = x; }
-      }
-      m = worst;
-    }
+    // 新手会做错事，但不该蠢到拆炸弹出小牌：先排除炸弹/王炸（除非手里只剩炸弹能出）
+    const plain = moves.filter(m => m.type !== 'bomb' && m.type !== 'rocket');
+    const pool = plain.length ? plain : moves;
+    // 只保留张数最少的那些（新手不爱打长牌型），再按点数从小到大
+    const minLen = Math.min.apply(null, pool.map(m => m.cards.length));
+    const small = pool.filter(m => m.cards.length === minLen);
+    small.sort((a, b) => a.rank - b.rank || a.cards.length - b.cards.length);
+    // 80% 打最小的一手，20% 在同档里随手换一个，免得每局一模一样
+    const idx = Math.random() < 0.8 ? 0 : Math.floor(Math.random() * small.length);
+    const m = small[idx];
     return {
       pass: false, move: m, plan: planCount(minus(state.hand, m.cards)),
       reason: '（free 档）随手出：' + describe(m) + '。', options: [], notes, tier: 'free'
@@ -1034,9 +1049,14 @@
     const baseKey = base.pass ? 'pass' : cardKey(base.move);
     const baseStat = stats.find(x => cardKey(x.move) === baseKey);
 
-    // 推演结论和启发式差得不多时，尊重启发式的牌形判断
+    // 推演结论和启发式差得不多时，尊重启发式的牌形判断。
+    // 门槛按样本量走：样本少时二项分布抖动大，必须领先很多才敢推翻启发式，
+    // 否则 12 次推演就能把一手好牌换成噪声（旧版 plus 档 0.50 低于 go 0.56 就是这个原因）。
     let chosen = top;
-    if (baseStat && rate(top) - rate(baseStat) < 0.03) chosen = baseStat;
+    const pTop = rate(top);
+    const se = Math.sqrt(Math.max(0.0004, pTop * (1 - pTop) / Math.max(1, top.done)));
+    const margin = Math.max(0.03, Math.min(0.12, se));
+    if (baseStat && pTop - rate(baseStat) < margin) chosen = baseStat;
 
     const winPct = Math.round(rate(chosen) * 100);
     const simNote = '推演 ' + used + ' 次，估计胜率 ' + winPct + '%';
@@ -1057,8 +1077,88 @@
     };
   }
 
+  /* ---------------- sota 档：DouZero WP（外部注入的推理钩子） ----------------
+   * 引擎本身不碰 ONNX/网络：插件把 src/sota.js 的 rank() 注进来，
+   * 权重没下载好、推理抛错、农民位（实测不如启发式）都回退启发式，并写明原因。
+   */
+
+  let sotaRankFn = null;
+  // 农民位是否也交给 DouZero。默认 false：ai/SOTA.md 实测 300 副，农民位 DouZero 0.800
+  // 低于本引擎启发式 0.898（对 plus 档 0.443 对 0.560），换上下家也没变好，
+  // 原因是它的农民模型学的是「队友也强」的配合。想复现实验时再打开。
+  let sotaFarmer = false;
+
+  function setSotaRank(fn) {
+    sotaRankFn = typeof fn === 'function' ? fn : null;
+  }
+
+  function setSotaFarmer(on) { sotaFarmer = !!on; }
+
+  function sotaAvailable() { return !!sotaRankFn; }
+
+  function sotaAdvice(state) {
+    const base = heuristicAdvice(state);
+    const ctx = state && state.sotaCtx;
+    if (!sotaRankFn || !ctx) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）DouZero 权重还没加载，这一手按启发式走：' + (base.reason || '');
+      return base;
+    }
+    if (ctx.position !== 'landlord' && !sotaFarmer) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）农民位按实测回退启发式（DouZero 农民 0.800 < 本引擎 0.898）。' + (base.reason || '');
+      return base;
+    }
+    const lm = state.last && state.last.move ? state.last.move : null;
+    const moves = generateMoves(state.hand, lm);
+    const canPass = !!lm;
+    if (!moves.length) {
+      base.tier = 'sota';
+      base.reason = '（sota 档）要不起。' + (base.reason || '');
+      return base;
+    }
+    const counts = moves.map(m => { const c = zero(); for (const r of m.cards) c[r - 3]++; return c; });
+    // 跟牌时把「过」也交给模型：DouZero 的动作空间里过牌就是全零那行
+    if (canPass) counts.push(zero());
+    let index;
+    try {
+      const r = sotaRankFn(ctx, counts);
+      index = r && typeof r.index === 'number' ? r.index : -1;
+    } catch (err) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）推理失败，回退启发式：' + ((err && err.message) || err);
+      return base;
+    }
+    if (index < 0 || index >= counts.length) {
+      base.tier = 'sota';
+      base.fallback = true;
+      base.reason = '（sota 档）没给出合法动作，回退启发式。';
+      return base;
+    }
+    if (index === moves.length) {
+      return {
+        pass: true, move: null, plan: base.plan,
+        reason: '（sota 档）DouZero WP 认为这手该过。',
+        options: (base.options || []).slice(0, 4), notes: base.notes || [],
+        tier: 'sota'
+      };
+    }
+    const chosen = moves[index];
+    return {
+      pass: false, move: chosen,
+      plan: planCount(minus(state.hand, chosen.cards)),
+      reason: '（sota 档）DouZero WP 选「' + describe(chosen) + '」。',
+      options: (base.options || []).slice(0, 4), notes: base.notes || [],
+      tier: 'sota'
+    };
+  }
+
   function advise(state, opts) {
     const tier = tierOf(opts && opts.tier);
+    if (tier === 'sota') return sotaAdvice(state);
     if (tier === 'free') return freeAdvice(state);
     const base = heuristicAdvice(state);
     if (tier === 'go') { base.tier = 'go'; return base; }
@@ -1100,8 +1200,9 @@
     N, idx, rk, rankName, NAME, TYPE_CN,
     zero, total, countsOf, minus, addCards, cardsOf, fullDeck, shuffled,
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
-    describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
+    describe, cardsText, breaksBomb, advise, parseCards, TIERS, TIER_CFG, TIER_ALIAS, tierOf, estimate,
     deal, pickLandlord,
+    setSotaRank, setSotaFarmer, sotaAvailable,
     // 内部工具（测试与 SOTA 适配用，不参与 UI）
     sampleHands, greedyPick, greedyPlans
   };

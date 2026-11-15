@@ -1,0 +1,22 @@
+{
+  "source": "https://huggingface.co/palemoky/douzero-baselines/resolve/main/models_onnx/douzero_WP/",
+  "license": "Apache-2.0 (DouZero, kwai/DouZero)",
+  "note": "运行时按需下载；仓库不提交权重。",
+  "files": [
+    {
+      "file": "landlord.onnx",
+      "bytes": 5834135,
+      "sha256": "5ba2f1bb414483a3ecdf0d000159c1322b02e2d096e6d83be8a18765b56d6d32"
+    },
+    {
+      "file": "landlord_up.onnx",
+      "bytes": 6061463,
+      "sha256": "244ec62a549a0141c6532dffd02bee7675621d095cb194362b47c8a923c95883"
+    },
+    {
+      "file": "landlord_down.onnx",
+      "bytes": 6061463,
+      "sha256": "9b816457615f8007dd3a657dde1f78dac4fec7c3b0041f6f89321a1c6335cbd1"
+    }
+  ]
+}
