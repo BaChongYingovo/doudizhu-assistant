@@ -68,6 +68,237 @@ function loadSota(env) {
   return fn(shim, shim.exports, undefined, env.fetch, env.crypto || webcrypto, env.caches, TextDecoder, console)
 }
 
+/* ---------------- 0. 校验失败必须关掉，不靠真权重 ---------------- */
+console.log('校验失败关闭')
+
+ok(!/credentials\s*:\s*['"]include['"]/.test(sotaCode), 'fetch 不使用 credentials: include')
+ok(/credentials\s*:\s*['"]omit['"]/.test(sotaCode), 'fetch 显式 credentials: omit')
+ok(sotaCode.includes('https://huggingface.co/') && sotaCode.includes('https://hf-mirror.com/'), '默认源仍是 https')
+
+const uiSrc = fs.readFileSync(path.join(root, 'src', 'ui.js'), 'utf8')
+const styleSrc = fs.readFileSync(path.join(root, 'src', 'style.js'), 'utf8')
+const timeoutBlock = uiSrc.slice(uiSrc.indexOf('倒计时'), uiSrc.indexOf('本局计时'))
+ok(/sota\.status !== 'idle'/.test(uiSrc), 'error 不会自动再 load')
+ok(timeoutBlock.includes('fallbackMove(s, 0)'), '超时领出走 fallbackMove')
+ok(!timeoutBlock.includes('hintList'), '超时路径不再用 hintList 第一手')
+ok(styleSrc.includes('.ddz-root .ddz-btn {'), '面板按钮样式挂在 .ddz-root 下')
+ok(/^\.ddz-more-row \{/m.test(styleSrc), '更多菜单行仍在宿主菜单里，不加 .ddz-root')
+
+function u8(...parts) {
+  const list = parts.map((p) => (p instanceof Uint8Array ? p : Uint8Array.from(p)))
+  let n = 0
+  for (const p of list) n += p.length
+  const out = new Uint8Array(n)
+  let o = 0
+  for (const p of list) { out.set(p, o); o += p.length }
+  return out
+}
+function pbVarint(n) {
+  const out = []
+  let x = n
+  while (x > 127) { out.push((x & 127) | 128); x = Math.floor(x / 128) }
+  out.push(x)
+  return Uint8Array.from(out)
+}
+function pbKey(field, wire) { return pbVarint((field << 3) | wire) }
+function pbBytes(field, data) {
+  const b = data instanceof Uint8Array ? data : Uint8Array.from(data)
+  return u8(pbKey(field, 2), pbVarint(b.length), b)
+}
+function pbVar(field, n) { return u8(pbKey(field, 0), pbVarint(n)) }
+function pbTensor({ name, dims, raw }) {
+  const parts = []
+  for (const d of dims) parts.push(pbVar(1, d))
+  parts.push(pbVar(2, 1))
+  parts.push(pbBytes(8, new TextEncoder().encode(name)))
+  if (raw) parts.push(pbBytes(9, raw))
+  return u8(...parts)
+}
+function pbModel(tp) { return pbBytes(7, pbBytes(5, tp)) }
+
+const Ssec = loadSota({ fetch: async () => { throw new Error('安全测试不联网') } })
+{
+  const tiny = pbModel(pbTensor({ name: 'base.dense6.bias', dims: [1], raw: new Uint8Array(4) }))
+  let parsed = null
+  let err = null
+  try { parsed = Ssec.parseOnnx(tiny) } catch (e) { err = e }
+  ok(!err && parsed && parsed['base.dense6.bias'] && parsed['base.dense6.bias'].data.length === 1, '已知形状的小张量可以解析', err && err.message)
+  ok(parsed && Object.getPrototypeOf(parsed) === null, '张量表是空原型，键不会碰到 __proto__')
+}
+{
+  const evil = pbModel(pbTensor({ name: '__proto__', dims: [1], raw: new Uint8Array(4) }))
+  let err = null
+  try { Ssec.parseOnnx(evil) } catch (e) { err = e }
+  ok(!!err, '张量名 __proto__ 被拒绝', err && err.message)
+  ok(!Object.prototype.hasOwnProperty('dims') && !({}).dims, '拒绝 __proto__ 时没有污染 Object.prototype')
+}
+{
+  const badLen = pbModel(pbTensor({ name: 'base.dense6.bias', dims: [1], raw: new Uint8Array(8) }))
+  let err = null
+  try { Ssec.parseOnnx(badLen) } catch (e) { err = e }
+  ok(!!err && /长度|不符/.test(err.message), '维度与数据长度不一致就拒绝', err && err.message)
+}
+{
+  const badShape = pbModel(pbTensor({ name: 'base.dense6.bias', dims: [2], raw: new Uint8Array(8) }))
+  let err = null
+  try { Ssec.parseOnnx(badShape) } catch (e) { err = e }
+  ok(!!err && /拒绝|形状|超出/.test(err.message), '不在地主模型形状表里的 dims 被拒绝', err && err.message)
+}
+{
+  const huge = pbModel(pbTensor({ name: 'base.dense1.weight', dims: [100000, 100000], raw: new Uint8Array(4) }))
+  let err = null
+  try { Ssec.parseOnnx(huge) } catch (e) { err = e }
+  ok(!!err && /超出|拒绝/.test(err.message), '超大维度在分配之前被拒绝', err && err.message)
+  ok(!Object.prototype.hasOwnProperty('data'), '超大张量没有写进原型')
+}
+
+{
+  let fetches = 0
+  const S = loadSota({
+    crypto: {},
+    fetch: async () => { fetches++; throw new Error('不应请求') },
+  })
+  const okLoad = await S.load().then(() => true).catch(() => false)
+  ok(okLoad === false && fetches === 0, '没有 subtle 时失败关闭，且不发请求', S.status().error)
+  ok(S.status().status === 'error' && /sha256/.test(S.status().error || ''), '缺失 webcrypto 的错误写明 sha256', S.status().error)
+}
+{
+  let fetches = 0
+  const S = loadSota({
+    crypto: { subtle: { digest: async () => new ArrayBuffer(0) } },
+    fetch: async () => { fetches++; throw new Error('不应请求') },
+  })
+  const okLoad = await S.load().then(() => true).catch(() => false)
+  ok(okLoad === false && fetches === 0, '空摘要不算校验通过，且不发请求', S.status().error)
+  ok(/sha256|拒绝/.test(S.status().error || ''), '空摘要的错误不是静默成功', S.status().error)
+}
+
+function memoryCaches(entries) {
+  const box = new Map(entries || [])
+  const api = {
+    deletedKeys: [],
+    deletedCaches: [],
+    puts: [],
+    order: [],
+    box,
+    async open() {
+      return {
+        async match(key) {
+          if (!box.has(key)) return undefined
+          return new Response(box.get(key))
+        },
+        async put(key, res) {
+          api.puts.push(key)
+          api.order.push('put')
+          box.set(key, new Uint8Array(await res.arrayBuffer()))
+        },
+        async delete(key) {
+          api.deletedKeys.push(key)
+          api.order.push('delete')
+          return box.delete(key)
+        },
+      }
+    },
+    async delete(name) {
+      api.deletedCaches.push(name)
+      api.order.push('caches.delete')
+      box.clear()
+      return true
+    },
+  }
+  return api
+}
+
+{
+  const cacheKey = 'sota:' + landlordMeta.file
+  const bad = new Uint8Array(landlordMeta.bytes)
+  bad[0] = 9
+  const caches = memoryCaches([[cacheKey, bad]])
+  const S = loadSota({
+    caches,
+    fetch: async () => {
+      caches.order.push('fetch')
+      return { ok: false, status: 503, headers: { get: () => null } }
+    },
+  })
+  const okLoad = await S.load().then(() => true).catch(() => false)
+  ok(okLoad === false, '缓存 sha256 不符不能加载')
+  ok(caches.deletedKeys.indexOf(cacheKey) >= 0, '缓存 sha256 不符会删除该条目', JSON.stringify(caches.deletedKeys))
+  ok(!caches.box.has(cacheKey), '删完之后缓存里没有这份坏文件')
+  ok(caches.order[0] === 'delete' && caches.order.indexOf('fetch') > 0, '先删坏缓存再尝试下载', caches.order.join(','))
+  ok(caches.puts.length === 0, '没校验过的字节不会写回缓存')
+}
+{
+  const cacheKey = 'sota:' + landlordMeta.file
+  const caches = memoryCaches([[cacheKey, new Uint8Array([1, 2, 3, 4])]])
+  const S = loadSota({
+    caches,
+    fetch: async () => ({ ok: false, status: 404, headers: { get: () => null } }),
+  })
+  await S.load().then(() => true).catch(() => false)
+  ok(caches.deletedKeys.indexOf(cacheKey) >= 0, '缓存长度不符也会删除条目')
+}
+{
+  const limit = landlordMeta.bytes
+  let reads = 0
+  let cancels = 0
+  const S = loadSota({
+    fetch: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      body: {
+        getReader() {
+          return {
+            async read() {
+              reads++
+              if (reads > 8) return { done: true, value: undefined }
+              return { done: false, value: new Uint8Array(1000000) }
+            },
+            async cancel() { cancels++ },
+          }
+        },
+      },
+    }),
+  })
+  const okLoad = await S.load({ sources: ['https://example.test/models/'] }).then(() => true).catch(() => false)
+  ok(okLoad === false, '下载体积超出 meta.bytes 时失败')
+  ok(cancels >= 1, '超出时调用 reader.cancel()', 'cancels=' + cancels)
+  ok(reads === 6, '超出的那一块之后不再读', 'reads=' + reads)
+}
+{
+  let reads = 0
+  let bodyCancels = 0
+  let opts = null
+  const S = loadSota({
+    fetch: async (_url, options) => {
+      opts = options
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (k) => (k === 'content-length' ? String(landlordMeta.bytes + 80) : null) },
+        body: {
+          async cancel() { bodyCancels++ },
+          getReader() {
+            reads++
+            return { async read() { return { done: true, value: undefined } }, async cancel() {} }
+          },
+        },
+      }
+    },
+  })
+  const okLoad = await S.load({ sources: ['https://example.test/models/'] }).then(() => true).catch(() => false)
+  ok(okLoad === false && reads === 0, 'content-length 已超限时不读取 body', 'reads=' + reads)
+  ok(bodyCancels >= 1, 'content-length 超限时取消 body')
+  ok(opts && opts.credentials === 'omit', 'fetch 使用 credentials omit', JSON.stringify(opts))
+}
+{
+  const caches = memoryCaches()
+  const S = loadSota({ caches, fetch: async () => { throw new Error('不该下载') } })
+  await S.reset()
+  ok(caches.deletedCaches.indexOf(S.CACHE_NAME) >= 0, 'reset() 调用 caches.delete', JSON.stringify(caches.deletedCaches))
+}
+
 /* ---------------- 1. ONNX 解析 =--------------- */
 const landlordBytes = await ensureLandlord()
 const SOTA = loadSota({ fetch: async () => { throw new Error('测试不联网') } })

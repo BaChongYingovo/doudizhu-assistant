@@ -166,6 +166,51 @@
     return s;
   }
 
+  // 地主模型的全部 initializer。名字和形状都写死：不认识的名字直接拒绝，
+  // 避免把张量名当成对象键时写到 __proto__，也避免超大 dims 把内存撑爆。
+  const MAX_DIM = 1024;
+  const MAX_ELEMS = 262144;
+  const LANDLORD_SHAPES = {
+    'onnx::LSTM_131': [1, 512, 162],
+    'onnx::LSTM_132': [1, 512, 128],
+    'onnx::LSTM_133': [1, 1024],
+    'base.dense1.weight': [512, 501],
+    'base.dense1.bias': [512],
+    'base.dense2.weight': [512, 512],
+    'base.dense2.bias': [512],
+    'base.dense3.weight': [512, 512],
+    'base.dense3.bias': [512],
+    'base.dense4.weight': [512, 512],
+    'base.dense4.bias': [512],
+    'base.dense5.weight': [512, 512],
+    'base.dense5.bias': [512],
+    'base.dense6.weight': [1, 512],
+    'base.dense6.bias': [1]
+  };
+
+  function sameDims(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  function knownShape(name) {
+    if (typeof name !== 'string' || !Object.prototype.hasOwnProperty.call(LANDLORD_SHAPES, name)) return null;
+    return LANDLORD_SHAPES[name];
+  }
+
+  function elemsOf(dims) {
+    if (!dims || !dims.length || dims.length > 4) throw new Error('onnx: 维度超出地主模型');
+    let n = 1;
+    for (let i = 0; i < dims.length; i++) {
+      const d = dims[i];
+      if ((d | 0) !== d || d <= 0 || d > MAX_DIM) throw new Error('onnx: 维度超出地主模型');
+      if (n > Math.floor(MAX_ELEMS / d)) throw new Error('onnx: 张量超出地主模型');
+      n *= d;
+    }
+    return n;
+  }
+
   // TensorProto → { dims, data: Float32Array }
   function readTensor(tp) {
     const fs = readFields(tp);
@@ -186,28 +231,37 @@
       else if (f.f === 9 && f.t === 2) raw = f.v;
     }
     if (dataType !== 1) throw new Error('onnx: 只支持 float32，收到 data_type=' + dataType);
+    // 先按维度封顶，再对数据长度；dims 报大数时不要按它去分配。
+    const expect = elemsOf(dims);
     let data;
     if (raw) {
-      data = new Float32Array(raw.length >> 2);
+      if (raw.length !== expect * 4) throw new Error('onnx: 张量长度与维度不符');
+      data = new Float32Array(expect);
       const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-      for (let i = 0; i < data.length; i++) data[i] = view.getFloat32(i * 4, true);
+      for (let i = 0; i < expect; i++) data[i] = view.getFloat32(i * 4, true);
     } else {
+      if (floats.length !== expect) throw new Error('onnx: 张量长度与维度不符');
       data = new Float32Array(floats);
     }
     return { name, dims, data };
   }
 
-  // 返回 { 名字: {dims, data} }，只要 graph.initializer
+  // 返回 { 名字: {dims, data} }，只要 graph.initializer。
+  // 表用空原型，并且只收下地主模型已知名字，避免 __proto__ 之类的键。
   function parseOnnx(input) {
     const b = input instanceof Uint8Array ? input : new Uint8Array(input);
+    if (b.length > FILES.landlord.bytes) throw new Error('onnx: 文件超出地主模型体积');
     const top = readFields(b);
     let graph = null;
     for (const f of top) if (f.f === 7 && f.t === 2) graph = f.v;
     if (!graph) throw new Error('onnx: 没有 graph');
-    const tensors = {};
+    const tensors = Object.create(null);
     for (const f of readFields(graph)) {
       if (f.f !== 5 || f.t !== 2) continue;
       const t = readTensor(f.v);
+      const want = knownShape(t.name);
+      if (!want || !sameDims(t.dims, want)) throw new Error('onnx: 拒绝模型形状之外的张量');
+      if (Object.prototype.hasOwnProperty.call(tensors, t.name)) throw new Error('onnx: 重复张量');
       tensors[t.name] = { dims: t.dims, data: t.data };
     }
     return tensors;
@@ -223,8 +277,11 @@
   // ONNX LSTM 门序为 i o f c；卷积核布局 [1, 4*hidden, input] / [1, 4*hidden, hidden]
   function buildModel(tensors) {
     const get = (n) => {
-      const t = tensors[n];
-      if (!t) throw new Error('onnx: 缺少张量 ' + n);
+      const t = tensors && tensors[n];
+      const want = knownShape(n);
+      if (!t || !want || !sameDims(t.dims, want) || !t.data || t.data.length !== elemsOf(want)) {
+        throw new Error('onnx: 缺少或拒绝张量 ' + n);
+      }
       return t;
     };
     const W = get('onnx::LSTM_131'); // [1, 512, 162]
@@ -341,15 +398,30 @@
     return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
   }
 
+  // 算不出摘要就拒绝，不能当成「没有 sha256 也可以加载」。
   function sha256Hex(buf) {
-    const c = typeof crypto !== 'undefined' ? crypto : null;
-    if (!c || !c.subtle) return Promise.resolve('');
-    return c.subtle.digest('SHA-256', buf).then((d) => {
-      const u = new Uint8Array(d);
-      let s = '';
-      for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16);
-      return s;
-    });
+    const fail = () => Promise.reject(new Error('sha256 不可用，拒绝加载'));
+    try {
+      const c = typeof crypto !== 'undefined' ? crypto : null;
+      const subtle = c && c.subtle;
+      if (!subtle || typeof subtle.digest !== 'function') return fail();
+      return Promise.resolve()
+        .then(() => subtle.digest('SHA-256', buf))
+        .then((d) => {
+          const u = new Uint8Array(d);
+          if (u.length !== 32) throw new Error('sha256 不可用，拒绝加载');
+          let s = '';
+          for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16);
+          if (s.length !== 64) throw new Error('sha256 不可用，拒绝加载');
+          return s;
+        })
+        .catch((err) => {
+          if (err && err.message === 'sha256 不可用，拒绝加载') throw err;
+          throw new Error('sha256 不可用，拒绝加载');
+        });
+    } catch (e) {
+      return fail();
+    }
   }
 
   async function readCache(key) {
@@ -372,12 +444,38 @@
     } catch (e) { /* 配额或隐私模式，忽略 */ }
   }
 
+  async function purgeCacheEntry(key) {
+    if (typeof caches === 'undefined' || !caches) return;
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      if (cache && typeof cache.delete === 'function') await cache.delete(key);
+    } catch (e) { /* ignore */ }
+  }
+
+  async function purgeCacheStorage() {
+    if (typeof caches === 'undefined' || !caches || typeof caches.delete !== 'function') return;
+    try { await caches.delete(CACHE_NAME); } catch (e) { /* ignore */ }
+  }
+
+  async function cancelStream(stream) {
+    try {
+      if (stream && typeof stream.cancel === 'function') await stream.cancel();
+    } catch (e) { /* ignore */ }
+  }
+
   async function download(url, expectBytes) {
-    const res = await fetch(url, { mode: 'cors' });
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
     if (!res.ok) throw new Error('下载失败 HTTP ' + res.status);
-    const total = Number(res.headers.get('content-length')) || expectBytes || 0;
+    const limit = expectBytes > 0 ? expectBytes : 0;
+    const declared = Number(res.headers.get('content-length'));
+    // content-length 已经超了就别把 body 读进来
+    if (limit && Number.isFinite(declared) && declared > limit) {
+      await cancelStream(res.body);
+      throw new Error('体积超出：' + declared + ' > ' + limit);
+    }
     if (!res.body || typeof res.body.getReader !== 'function') {
       const buf = new Uint8Array(await res.arrayBuffer());
+      if (limit && buf.length > limit) throw new Error('体积超出：' + buf.length + ' > ' + limit);
       state.progress = 1; emit();
       return buf;
     }
@@ -387,9 +485,15 @@
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      chunks.push(value);
-      got += value.length;
-      if (total) { state.progress = Math.min(0.99, got / total); emit(); }
+      const n = value && value.length ? value.length : 0;
+      // 超出预期就停，不要先把整段超大 body 拼起来
+      if (limit && got + n > limit) {
+        await cancelStream(reader);
+        throw new Error('体积超出：' + (got + n) + ' > ' + limit);
+      }
+      if (n) chunks.push(value);
+      got += n;
+      if (limit) { state.progress = Math.min(0.99, got / limit); emit(); }
     }
     const buf = new Uint8Array(got);
     let o = 0;
@@ -399,49 +503,87 @@
 
   // 加载地主模型；重复调用复用同一个 Promise
   let loading = null;
+  let generation = 0;
+  let cacheClear = Promise.resolve();
   function load(opts) {
-    if (state.status === 'ready') return Promise.resolve(true);
+    if (state.status === 'ready' && state.model) return Promise.resolve(true);
     if (loading) return loading;
     const options = opts || {};
     const meta = FILES.landlord;
     const sources = options.sources || (options.url ? [options.url] : MIRRORS);
     const cacheKey = 'sota:' + meta.file;
-    state.status = 'downloading'; state.progress = 0; state.error = ''; emit();
-    loading = (async () => {
-      let bytes = await readCache(cacheKey);
-      if (bytes && bytes.length !== meta.bytes) bytes = null;
-      if (!bytes) {
-        const fails = [];
-        for (const base of sources) {
-          const url = base + meta.file;
-          try {
-            const got = await download(url, meta.bytes);
-            if (meta.bytes && got.length !== meta.bytes) throw new Error('体积不符：' + got.length + ' ≠ ' + meta.bytes);
-            const digest = await sha256Hex(got);
-            if (digest && digest !== meta.sha256) throw new Error('sha256 不符，拒绝加载');
-            bytes = got;
-            state.source = base;
-            break;
-          } catch (err) {
-            fails.push(new URL(url).host + '：' + ((err && err.message) || err));
+    const myGen = generation;
+    let task;
+    task = (async () => {
+      try {
+        await cacheClear;
+        if (myGen !== generation) return false;
+        // 摘要能力先探一下：不行就不要去打镜像站
+        try { await sha256Hex(new Uint8Array(0)); }
+        catch (e) { throw new Error('sha256 不可用，拒绝加载'); }
+        state.status = 'downloading'; state.progress = 0; state.error = ''; state.source = ''; emit();
+        let bytes = await readCache(cacheKey);
+        let fromNet = false;
+        if (bytes) {
+          const badLen = !!(meta.bytes && bytes.length !== meta.bytes);
+          let badHash = false;
+          if (!badLen) {
+            const digest = await sha256Hex(bytes);
+            badHash = digest !== meta.sha256;
+          }
+          if (badLen || badHash) {
+            await purgeCacheEntry(cacheKey);
+            bytes = null;
           }
         }
-        if (!bytes) throw new Error('所有源都失败（' + fails.join('；') + '）');
-        await writeCache(cacheKey, bytes);
-      }
-      const tensors = parseOnnx(bytes);
-      state.model = buildModel(tensors);
-      state.status = 'ready'; state.progress = 1; emit();
-      return true;
-    })()
-      .catch((err) => {
+        if (!bytes) {
+          const fails = [];
+          for (const base of sources) {
+            if (myGen !== generation) return false;
+            const url = base + meta.file;
+            try {
+              const got = await download(url, meta.bytes);
+              if (meta.bytes && got.length !== meta.bytes) throw new Error('体积不符：' + got.length + ' ≠ ' + meta.bytes);
+              const digest = await sha256Hex(got);
+              if (digest !== meta.sha256) throw new Error('sha256 不符，拒绝加载');
+              bytes = got;
+              state.source = base;
+              fromNet = true;
+              break;
+            } catch (err) {
+              let host = url;
+              try { host = new URL(url).host; } catch (e) { /* 非法地址就原文 */ }
+              fails.push(host + '：' + ((err && err.message) || err));
+            }
+          }
+          if (!bytes) throw new Error('所有源都失败（' + fails.join('；') + '）');
+        }
+        let model;
+        try {
+          model = buildModel(parseOnnx(bytes));
+        } catch (err) {
+          await purgeCacheEntry(cacheKey);
+          throw err;
+        }
+        if (myGen !== generation) return false;
+        // 解析通过之后才写入缓存，坏文件不要留给下一次命中
+        if (fromNet) await writeCache(cacheKey, bytes);
+        if (myGen !== generation) return false;
+        state.model = model;
+        state.status = 'ready'; state.progress = 1; emit();
+        return true;
+      } catch (err) {
+        if (myGen !== generation) return false;
         state.status = 'error';
         state.error = (err && err.message) || String(err);
         emit();
         throw err;
-      })
-      .finally(() => { loading = null; });
-    return loading;
+      } finally {
+        if (loading === task) loading = null;
+      }
+    })();
+    loading = task;
+    return task;
   }
 
   // 直接从内存里的 ONNX 字节建模型（测试与本地文件用）
@@ -453,7 +595,12 @@
 
   function ready() { return state.status === 'ready' && !!state.model; }
   function reset() {
-    state.status = 'idle'; state.progress = 0; state.error = ''; state.model = null; emit();
+    generation++;
+    loading = null;
+    state.status = 'idle'; state.progress = 0; state.error = ''; state.source = ''; state.model = null;
+    cacheClear = purgeCacheStorage();
+    emit();
+    return cacheClear;
   }
 
   // ctx + 候选动作 counts → { index, scores }

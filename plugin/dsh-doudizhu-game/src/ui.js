@@ -325,6 +325,7 @@ function PanelView() {
   const toastTimer = useRef(null)
   const adviceKeyRef = useRef('')
   const adviceTimerRef = useRef(null)
+  const rootRef = useRef(null)
   const st = stRef.current
 
   /* -------- sota 档：DouZero 权重 -------- */
@@ -340,12 +341,12 @@ function PanelView() {
     return off
   }, [])
 
-  // 选了 sota 档才去下权重；下载中/已就绪不重复触发
+  // 选了 sota 档、且还是 idle 才去下权重。error 停住，只有用户点重试才再来。
   useEffect(() => {
     if (typeof SOTA === 'undefined') return
     if (tiers.indexOf('sota') < 0) return
     if (SOTA.ready()) { DDZ.setSotaRank(SOTA.rank); return }
-    if (sota.status === 'downloading' || sota.status === 'ready') return
+    if (sota.status !== 'idle') return
     SOTA.load().catch(() => { /* 状态已经通过 onStatus 落到界面 */ })
   }, [tiers, sota.status])
 
@@ -515,12 +516,26 @@ function PanelView() {
     }, 30)
   }
 
-  /* 快捷键：空格提示 / 回车出牌 / Esc 取消（在输入框里打字时不拦） */
+  /* 快捷键：空格提示 / 回车出牌 / Esc 取消。
+     只在插件根获得焦点时处理，输入框、contenteditable 和宿主编辑器里不拦。 */
   useEffect(() => {
     if (view !== 'table') return
+    function isTypingTarget(el) {
+      if (!el || typeof el !== 'object') return false
+      const tag = el.tagName || ''
+      if (/^(INPUT|TEXTAREA|SELECT)$/i.test(tag)) return true
+      if (el.isContentEditable) return true
+      if (typeof el.closest !== 'function') return false
+      return !!el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .monaco-editor, .cm-editor, .cm-content, .ProseMirror, [role="textbox"]')
+    }
+    function insidePlugin(el) {
+      return !!(el && typeof el.closest === 'function' && el.closest('.ddz-root'))
+    }
     function onKey(e) {
-      const tag = (e.target && e.target.tagName) || ''
-      if (/^(INPUT|TEXTAREA|SELECT)$/i.test(tag) || e.isComposing) return
+      if (e.isComposing || isTypingTarget(e.target)) return
+      const active = typeof document !== 'undefined' ? document.activeElement : null
+      if (isTypingTarget(active)) return
+      if (!insidePlugin(e.target) && !insidePlugin(active)) return
       if (modal) return
       if (auto) return
       const s = stRef.current
@@ -648,8 +663,8 @@ function PanelView() {
         try {
           if (s.last && s.last.seat !== 0) G.applyPass(s, 0)
           else {
-            const h = G.hintList(s, 0)
-            if (h.moves.length) G.applyPlay(s, 0, h.moves[0].cards)
+            const fb = G.fallbackMove(s, 0)
+            if (fb && fb.move) G.applyPlay(s, 0, fb.move.cards)
           }
         } catch { /* 超时兜底失败就停在这 */ }
         setRemain(30)
@@ -705,7 +720,14 @@ function PanelView() {
         sota.status === 'error'
           ? h('button', {
             className: 'ddz-btn ddz-btn--ghost',
-            onClick: () => { SOTA.reset(); SOTA.load().catch(() => { /* 状态回界面 */ }) }
+            onClick: () => {
+              const again = () => { SOTA.load().catch(() => { /* 状态回界面 */ }) }
+              try {
+                const cleared = SOTA.reset()
+                if (cleared && typeof cleared.then === 'function') cleared.then(again, again)
+                else again()
+              } catch (e) { again() }
+            }
           }, T.sotaRetry)
           : null,
         sota.status === 'idle'
@@ -964,7 +986,20 @@ function PanelView() {
     return null
   }
 
-  return h('div', { className: 'ddz-root' },
+  return h('div', {
+    className: 'ddz-root',
+    tabIndex: -1,
+    ref: rootRef,
+    onPointerDown: (e) => {
+      const t = e && e.target
+      if (!t || typeof t.closest !== 'function') return
+      if (t.closest('input, textarea, select, button, a, [contenteditable]')) return
+      const root = rootRef.current
+      if (!root || typeof root.focus !== 'function') return
+      if (typeof document !== 'undefined' && document.activeElement === root) return
+      try { root.focus({ preventScroll: true }) } catch (err) { try { root.focus() } catch (e2) { /* ignore */ } }
+    },
+  },
     setupScreen(),
     tableScreen(),
     toastEl(),
