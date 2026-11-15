@@ -150,11 +150,15 @@ window.__ModuleLoader__.load({
       }
     }
 
-    // 四带二
+    // 四带二（带双王不算合法四带二，与 rlcard 一致）
     const four = g.find(x => x.k === 4);
     if (four) {
       const rest = g.filter(x => x !== four);
-      if (n === 6 && rest.length === 2 && rest[0].k === 1 && rest[1].k === 1) return mk('four2', four.r, 1);
+      const jokers = rest.length === 2 && rest[0].k === 1 && rest[1].k === 1 &&
+        rest[0].r + rest[1].r === 33;
+      if (n === 6 && rest.length === 2 && rest[0].k === 1 && rest[1].k === 1) {
+        return jokers ? null : mk('four2', four.r, 1);
+      }
       if (n === 6 && rest.length === 1 && rest[0].k === 2) return mk('four2', four.r, 1);
       if (n === 8 && rest.length === 2 && rest[0].k === 2 && rest[1].k === 2) return mk('four2pair', four.r, 1);
     }
@@ -175,7 +179,17 @@ window.__ModuleLoader__.load({
         if (wingPairs) {
           for (let i = 0; i < N; i++) if (restC[i] !== 0 && restC[i] !== 2) { okWing = false; break; }
         } else {
-          for (let i = 0; i < N; i++) if (restC[i] > 2) { okWing = false; break; }
+          // rlcard 允许单翅膀同点多达 3 张（4 张会成炸，不允许）
+          for (let i = 0; i < N; i++) if (restC[i] > 3) { okWing = false; break; }
+          // 双王不能同时当翅膀
+          if (restC[13] === 1 && restC[14] === 1) okWing = false;
+          // 与飞机相邻的点数若当翅膀，最多 2 张（3 张会并成更长的飞机；2 除外）
+          if (okWing) {
+            for (const r of [start - 1, start + k]) {
+              if (r < 3 || r > 15 || r === 15) continue;
+              if (restC[r - 3] === 3) { okWing = false; break; }
+            }
+          }
         }
         if (okWing) return mk(wingPairs ? 'plane2' : 'plane1', start, k);
       }
@@ -198,26 +212,46 @@ window.__ModuleLoader__.load({
   /* ---------------- 出牌生成 ---------------- */
 
   function comboRanks(c, wantPairs, count, limit) {
-    // 从剩余手牌里挑 count 个「不同点数」，优先低点数、优先已有对子/单张少的
     const cand = [];
     for (let i = 0; i < N; i++) {
-      if (wantPairs) { if (c[i] >= 2) cand.push({ r: i + 3, n: c[i] }); }
-      else if (c[i] > 0) cand.push({ r: i + 3, n: c[i] });
+      if (wantPairs) { if (c[i] >= 2) cand.push(i + 3); }
+      else if (c[i] > 0) cand.push(i + 3);
     }
-    cand.sort((a, b) => a.n - b.n || a.r - b.r);
-    const pick = cand.slice(0, Math.min(cand.length, Math.max(count, limit || count)));
     const out = [];
+    const cap = limit || 4096;
     const recursion = (start, acc) => {
-      if (out.length >= (limit || 8)) return;
+      if (out.length >= cap) return;
       if (acc.length === count) { out.push(acc.slice()); return; }
-      for (let i = start; i < pick.length; i++) {
-        acc.push(pick[i].r);
+      for (let i = start; i < cand.length; i++) {
+        acc.push(cand[i]);
         recursion(i + 1, acc);
         acc.pop();
-        if (out.length >= (limit || 8)) return;
+        if (out.length >= cap) return;
       }
     };
     recursion(0, []);
+    return out;
+  }
+
+  // 单牌翅膀：允许同点数重复（最多 maxPerRank 张，4 张会成炸故不允许）
+  function wingRanks(c, count, maxPerRank) {
+    const out = [];
+    const acc = [];
+    const cap = 2048;
+    const dfs = start => {
+      if (out.length >= cap) return;
+      if (acc.length === count) { out.push(acc.slice()); return; }
+      for (let i = start; i < N; i++) {
+        const m = Math.min(c[i], maxPerRank, count - acc.length);
+        for (let take = 1; take <= m; take++) {
+          for (let t = 0; t < take; t++) acc.push(i + 3);
+          dfs(i + 1);
+          for (let t = 0; t < take; t++) acc.pop();
+          if (out.length >= cap) return;
+        }
+      }
+    };
+    if (count > 0) dfs(0);
     return out;
   }
 
@@ -248,17 +282,17 @@ window.__ModuleLoader__.load({
       if (c[i] < 3) continue;
       const r = i + 3, trio = [r, r, r];
       const rest = c.slice(); rest[i] -= 3;
-      comboRanks(rest, false, 1, 3).forEach(w => add(trio.concat(w)));
-      comboRanks(rest, true, 1, 3).forEach(w => add(trio.concat(w, w)));
+      comboRanks(rest, false, 1).forEach(w => add(trio.concat(w)));
+      comboRanks(rest, true, 1).forEach(w => add(trio.concat(w, w)));
     }
 
-    // 四带二
+    // 四带二（单翅膀允许同点成对；对翅膀需两个不同对）
     for (let i = 0; i < N; i++) {
       if (c[i] !== 4) continue;
       const r = i + 3, q = [r, r, r, r];
       const rest = c.slice(); rest[i] = 0;
-      comboRanks(rest, false, 2, 4).forEach(w => add(q.concat(w)));
-      comboRanks(rest, true, 2, 4).forEach(w => add(q.concat(w, w)));
+      wingRanks(rest, 2, 3).forEach(w => add(q.concat(w)));
+      comboRanks(rest, true, 2).forEach(w => add(q.concat(w[0], w[0], w[1], w[1])));
     }
 
     // 顺子
@@ -287,8 +321,8 @@ window.__ModuleLoader__.load({
         for (let r = s; r < s + len; r++) main.push(r, r, r);
         add(main);
         const rest = minus(c, main);
-        comboRanks(rest, false, len, 12).forEach(w => add(main.concat(w)));
-        comboRanks(rest, true, len, 12).forEach(w => add(main.concat(...w.map(x => [x, x]))));
+        wingRanks(rest, len, 3).forEach(w => add(main.concat(w)));
+        comboRanks(rest, true, len).forEach(w => add(main.concat(...w.map(x => [x, x]))));
       }
     }
 
@@ -307,10 +341,10 @@ window.__ModuleLoader__.load({
     let v;
     const t = total(c);
     if (!t) v = 0;
-    else if (t > 16) v = greedyPlans(c);
+    else if (t > 16) v = greedyPlans(c, [0]);
     else {
       const r = exactPlans(c, { nodes: 0, budget: 30000 });
-      v = (r == null) ? greedyPlans(c) : r;
+      v = (r == null) ? greedyPlans(c, [0]) : r;
     }
     if (planMemo.size > 30000) planMemo.clear();
     planMemo.set(key, v);
@@ -397,9 +431,13 @@ window.__ModuleLoader__.load({
     return out;
   }
 
-  function greedyPlans(c) {
+  // modeList 默认 [0,1,2] 供测试与 SOTA 适配；planCount 只传 [0]：
+  // 三模式取最小手数会让 planCount 系统性偏低（实测 arena landlord 500 副 −14 局），
+  // mode1/2 的理想拆法在对局里兑现不了，启发式会误判自己快走完了。
+  function greedyPlans(c, modeList) {
+    const modes = modeList || [0, 1, 2];
     let best = 999;
-    for (let mode = 0; mode < 3; mode++) {
+    for (const mode of modes) {
       const cc = c.slice();
       let cnt = 0, guard = 0;
       while (total(cc) > 0 && guard++ < 40) {
@@ -414,6 +452,13 @@ window.__ModuleLoader__.load({
     return best;
   }
 
+  // 三种拆牌偏好，候选集完全相同，只改排序权重：
+  //   mode 0 = 基线（长牌型优先，与改造前逐字一致）
+  //   mode 1 = 整把带走：有长牌型就挑一次扔牌最多的那手
+  //   mode 2 = 攒长牌型：先走三张/对子/单张，长牌型留到后面整把出
+  // 三种模式是并列的拆牌方案，不互相嵌套：planCount 只用 mode 0，
+  // 因为实测把 min(mode0..2) 当手数会让决策过度乐观（arena −14/500）。
+  // 注意：mode 0 必须保持与旧实现完全一致，否则 planCount 会整体漂移。
   function greedyPick(cc, mode) {
     // 候选：优先长顺子/连对/飞机，再看三张、对子、单张
     const cand = [];
@@ -446,6 +491,22 @@ window.__ModuleLoader__.load({
       if (cc[i] >= 3) cand.push({ m: classify([i + 3, i + 3, i + 3]), w: 60 });
       if (cc[i] >= 2) cand.push({ m: classify([i + 3, i + 3]), w: 50 });
       if (cc[i] >= 1) cand.push({ m: classify([i + 3]), w: 40 });
+    }
+    const long = { straight: 1, pairseq: 1, plane: 1, plane1: 1, plane2: 1 };
+    if (mode === 1) {
+      // 整把带走：存在长牌型时，挑一次能扔掉最多牌的那手（同长比小）
+      const longs = cand.filter(c => c.m && long[c.m.type]);
+      if (longs.length) {
+        longs.sort((a, b) => b.m.cards.length - a.m.cards.length || a.m.rank - b.m.rank);
+        return longs[0].m;
+      }
+    } else if (mode === 2) {
+      // 攒长牌型：优先走三张/对子/单张，把顺子连对留到后面整把出
+      const shorts = cand.filter(c => c.m && !long[c.m.type]);
+      if (shorts.length) {
+        shorts.sort((a, b) => b.w - a.w);
+        return shorts[0].m;
+      }
     }
     cand.sort((a, b) => b.w - a.w);
     const pick = cand[0];
@@ -679,7 +740,13 @@ window.__ModuleLoader__.load({
       s -= (m.rank - 3) * (follows ? 0.8 : 0.35);
       if (m.type === 'bomb') s -= urgency ? 0 : 20;
       if (m.type === 'rocket') s -= urgency ? 0 : 28;
-      if (breaksBomb(hand, m)) s -= 24;
+    if (breaksBomb(hand, m)) s -= 24;
+    // 拆牌惩罚：单张拆对/拆三要付出代价
+    if (m.type === 'single' || m.type === 'pair') {
+      const same = hand[m.rank - 3];
+      const bulk = m.type === 'single' ? 1 : 2;
+      if (same > bulk) s -= (same - bulk) * 5.5;
+    }
       if (restPlan === 0) s += 260;
       if (restPlan === 1) s += 12;
       if (urgency && restPlan <= 1) s += 30;
@@ -787,23 +854,61 @@ window.__ModuleLoader__.load({
   function addCard(c, r) { c[r - 3] = (c[r - 3] || 0) + 1; }
 
   // 把还没露面的牌随机分给另外两家（推演用）
-  function sampleHands(hand, played, seatCounts, me) {
+  // 牌池守恒：发出去的牌必须全部来自「54 张 - 自己手牌 - 已出牌」，
+  // 绝不凭空补牌（旧实现在池子不够时随机 addCard，等于给对手塞了牌库里没有的牌）。
+  // knownHands[s] 非 null 表示该座位手牌已完全确定（明牌 / 自己），直接照抄、不参与采样。
+  function sampleHands(hand, played, seatCounts, me, knownHands) {
     const pool = [];
     const u = unseen(hand, played);
     for (let i = 0; i < N; i++) for (let k = 0; k < u[i]; k++) pool.push(i + 3);
+
+    const hands = [zero(), zero(), zero()];
+    hands[me] = hand.slice();
+
+    const fixed = [false, false, false];
+    const known = Array.isArray(knownHands) ? knownHands : null;
+    for (let s = 0; s < 3; s++) {
+      if (s === me) { fixed[s] = true; continue; }
+      const kh = known ? known[s] : null;
+      if (!kh) continue;
+      hands[s] = kh.slice();
+      fixed[s] = true;
+      for (let i = 0; i < N; i++) {
+        const take = Math.min(hands[s][i], pool.filter(r => r === i + 3).length);
+        for (let k = 0; k < take; k++) {
+          const at = pool.indexOf(i + 3);
+          if (at >= 0) pool.splice(at, 1);
+        }
+      }
+    }
+
+    // 只把池子里的牌按未知座位的张数切分；池子不够就少发，绝不凭空造牌
+    const unknown = [];
+    for (let s = 0; s < 3; s++) if (!fixed[s]) unknown.push(s);
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
     }
-    const hands = [zero(), zero(), zero()];
-    hands[me] = hand.slice();
     let p = 0;
-    for (let s = 0; s < 3; s++) {
-      if (s === me) continue;
-      let want = seatCounts[s] || 0;
-      const h = hands[s];
-      while (want-- > 0 && p < pool.length) addCard(h, pool[p++]);
-      while (total(h) < (seatCounts[s] || 0)) addCard(h, 3 + Math.floor(Math.random() * 15));
+    for (const s of unknown) {
+      const want = Math.min(seatCounts[s] || 0, pool.length - p);
+      for (let k = 0; k < want; k++) addCard(hands[s], pool[p++]);
+    }
+    // 剩下的牌（张数与 seatCounts 对不上时）补给还缺牌的未知座位，仍只发池内牌
+    for (const s of unknown) {
+      const want = (seatCounts[s] || 0) - total(hands[s]);
+      for (let k = 0; k < want && p < pool.length; k++) addCard(hands[s], pool[p++]);
+    }
+    // 仍有剩余（调用方 seatCounts 与实际不符）→ 轮转发给未知座位，保证 54 张守恒
+    let k = 0;
+    while (p < pool.length && unknown.length) {
+      addCard(hands[unknown[k % unknown.length]], pool[p++]);
+      k++;
+    }
+
+    const dealt = total(hands[0]) + total(hands[1]) + total(hands[2]) + total(played);
+    if (dealt !== 54) {
+      throw new Error('sampleHands 牌数不平：' + dealt + ' != 54（hand=' + total(hand) + ', played=' + total(played) + ', pool=' + u + '）');
     }
     return hands;
   }
@@ -863,7 +968,7 @@ window.__ModuleLoader__.load({
     let wins = 0, done = 0;
     for (let k = 0; k < samples; k++) {
       if (deadline && Date.now() > deadline) break;
-      const hands = sampleHands(state.hand, state.played, state.seatCounts, state.me);
+      const hands = sampleHands(state.hand, state.played, state.seatCounts, state.me, state.knownHands);
       let lastSeat = -1, lastMove = null;
       if (move) {
         hands[state.me] = minus(hands[state.me], move.cards);
@@ -1012,7 +1117,9 @@ window.__ModuleLoader__.load({
     zero, total, countsOf, minus, addCards, cardsOf, fullDeck, shuffled,
     classify, beats, generateMoves, planCount, unseen, canBeatProxy,
     describe, cardsText, breaksBomb, advise, parseCards, TIERS, tierOf, estimate,
-    deal, pickLandlord
+    deal, pickLandlord,
+    // 内部工具（测试与 SOTA 适配用，不参与 UI）
+    sampleHands, greedyPick, greedyPlans
   };
 });
 
@@ -1126,34 +1233,88 @@ function GameCore(DDZ) {
     return st.bidHighSeat < 0 ? ['call', 0] : ['rob', 0]
   }
 
-  // 手牌强度：叫地主/加倍都用它，返回 0..10
-  function strength(st, seat) {
-    const h = st.hands[seat]
-    let s = 0
-    s += h[14] * 4.5   // 大王
-    s += h[13] * 2.4   // 小王
-    s += h[12] * 1.5   // 2
-    s += h[11] * 0.8   // A
-    s += h[10] * 0.3   // K
-    for (let i = 0; i < N; i++) if (h[i] === 4) s += 4.2
-    if (h[13] > 0 && h[14] > 0) s += 3.5  // 王炸
-    const pc = DDZ.planCount(h)
-    s += Math.max(0, 10 - pc) * 0.55
-    return Math.min(10, s)
+  /* ------------------------------------------------------------------ *
+   * 手牌强度：结构化评分（叫分 / 加倍共用同一把尺子）
+   *
+   * 拆成三块，每块都能单独解释、单独验证：
+   *   control 控制牌：大王 / 小王 / 2 / A / K 的张数 × 具名权重
+   *   power   爆发力：炸弹（四张同点）、王炸
+   *   shape   手数：约几手能出完，越少越好（基准 10 手）
+   * score = min(10, 三块之和)，对外仍是一个 0..10 的数。
+   * 权重全部是 0.05 的整数倍，末了按 2 位小数取整，阈值边界不会被浮点误差抹掉。
+   * ------------------------------------------------------------------ */
+
+  const STRENGTH_WEIGHTS = Object.freeze({
+    cap: 10,
+    control: Object.freeze({ bigJoker: 4.5, smallJoker: 2.4, two: 1.5, ace: 0.8, king: 0.3 }),
+    power: Object.freeze({ bomb: 4.2, rocket: 3.5 }),
+    shape: Object.freeze({ baseline: 10, perPlan: 0.55 })
+  })
+
+  // 叫分 / 抢地主 / 加倍的判定线，全部提为具名常量，不再在分支里散落魔数
+  const BID_THRESHOLDS = Object.freeze({ three: 7.4, two: 5.6, one: 4.0, call: 4.6, rob: 5.8 })
+  const DOUBLE_THRESHOLDS = Object.freeze({ superDouble: 7.2, double: 5.0 })
+
+  const round2 = x => Math.round(x * 100) / 100
+
+  function strengthBreakdown(st, seat) {
+    const raw = st.hands && st.hands[seat]
+    const h = (raw && raw.length === N) ? raw : zero()
+    const w = STRENGTH_WEIGHTS.control
+    const control = {
+      bigJoker: h[14] * w.bigJoker,
+      smallJoker: h[13] * w.smallJoker,
+      two: h[12] * w.two,
+      ace: h[11] * w.ace,
+      king: h[10] * w.king
+    }
+    control.total = round2(control.bigJoker + control.smallJoker + control.two + control.ace + control.king)
+
+    let bombs = 0
+    for (let i = 0; i < N; i++) if (h[i] === 4) bombs++
+    const hasRocket = h[13] > 0 && h[14] > 0
+    const power = {
+      bombs,
+      rocket: hasRocket,
+      bombScore: round2(bombs * STRENGTH_WEIGHTS.power.bomb),
+      rocketScore: hasRocket ? STRENGTH_WEIGHTS.power.rocket : 0
+    }
+    power.total = round2(power.bombScore + power.rocketScore)
+
+    const plans = DDZ.planCount(h)
+    const saved = Math.max(0, STRENGTH_WEIGHTS.shape.baseline - plans)
+    const shape = {
+      plans,
+      saved,
+      perPlan: STRENGTH_WEIGHTS.shape.perPlan,
+      total: round2(saved * STRENGTH_WEIGHTS.shape.perPlan)
+    }
+
+    const total = round2(control.total + power.total + shape.total)
+    return { control, power, shape, raw: total, score: Math.min(STRENGTH_WEIGHTS.cap, total) }
+  }
+
+  // 对外行为不变：一个 0..10 的数
+  function strength(st, seat) { return strengthBreakdown(st, seat).score }
+
+  // 可解释：把分数拆给人看
+  function explainStrength(st, seat) {
+    const d = strengthBreakdown(st, seat)
+    return `控制牌 ${d.control.total} + 炸弹/王炸 ${d.power.total} + 手数(${d.shape.plans}手/省${d.shape.saved}手) ${d.shape.total} = ${d.score}`
   }
 
   function aiBid(st, seat) {
     const s = strength(st, seat)
     if (st.mode === 'score') {
       let v = 0
-      if (s >= 7.4) v = 3
-      else if (s >= 5.6) v = 2
-      else if (s >= 4.0) v = 1
+      if (s >= BID_THRESHOLDS.three) v = 3
+      else if (s >= BID_THRESHOLDS.two) v = 2
+      else if (s >= BID_THRESHOLDS.one) v = 1
       // 已经有人叫得比这高了就叫不了，只能过
       return v > st.bidHigh ? v : 0
     }
-    if (st.bidHighSeat < 0) return s >= 4.6 ? 'call' : 0
-    return s >= 5.8 ? 'rob' : 0
+    if (st.bidHighSeat < 0) return s >= BID_THRESHOLDS.call ? 'call' : 0
+    return s >= BID_THRESHOLDS.rob ? 'rob' : 0
   }
 
   function applyBid(st, seat, value) {
@@ -1189,8 +1350,8 @@ function GameCore(DDZ) {
 
   function aiDouble(st, seat) {
     const s = strength(st, seat)
-    if (s >= 7.2) return 4
-    if (s >= 5.0) return 2
+    if (s >= DOUBLE_THRESHOLDS.superDouble) return 4
+    if (s >= DOUBLE_THRESHOLDS.double) return 2
     return 1
   }
 
@@ -1333,43 +1494,166 @@ function GameCore(DDZ) {
    * AI：出牌 / 提示
    * ------------------------------------------------------------------ */
 
-  function adviseState(st, seat) {
+  /* ------------------------------------------------------------------ *
+   * 引擎信息通道
+   *
+   * 新增两个字段（都是「加字段」，不改旧字段语义）：
+   *   open       [bool,bool,bool] 三家是否明牌（亮了牌的那家手牌公开）
+   *   knownHands [counts|null ×3] 已知手牌：自己恒可见，明牌的对手也可见，
+   *              其余为 null（未知，交给引擎去采样分配）
+   *
+   * 向后兼容：
+   *   - 老调用 adviseState(st, seat) 完全可用；st.open 不存在时按全暗牌处理。
+   *   - 第三个可选参数 info 可注入 { open, knownHands }（给 L2 / 记牌器用），
+   *     不传就只从 st 推导，不会改写任何对局状态。
+   *   - 传给 DDZ.advise 的 state 带上这两个字段；引擎若不认识它们，行为与之前一致。
+   * ------------------------------------------------------------------ */
+
+  function countsOrNull(c) {
+    return (c && c.length === N) ? c.slice() : null
+  }
+
+  function adviseState(st, seat, info) {
     const lastOk = st.last && st.last.seat !== seat ? { seat: st.last.seat, move: st.last.move } : null
+    const stOpen = (st.open && st.open.length === 3) ? st.open : [false, false, false]
+    const played = (st.played && st.played.length === N) ? st.played : zero()
+    // open：允许上层逐座覆盖；没给就用对局里的明牌标记
+    const open = [0, 1, 2].map(s => {
+      const v = info && info.open && info.open[s] !== undefined ? info.open[s] : stOpen[s]
+      return !!v
+    })
+    // knownHands：自己必知，明牌的座位也公开；其余 null
+    const knownHands = [null, null, null]
+    for (let s = 0; s < 3; s++) {
+      if (s === seat || open[s]) knownHands[s] = countsOrNull(st.hands[s])
+    }
+    // 上层可逐座覆盖（传 null = 强制置为未知），数组里没给的座位保持推导值
+    if (info && info.knownHands) {
+      for (let s = 0; s < 3; s++) {
+        const v = info.knownHands[s]
+        if (v !== undefined) knownHands[s] = countsOrNull(v)
+      }
+    }
     return {
       hand: st.hands[seat],
       me: seat,
       landlord: st.landlord,
       seatCounts: [total(st.hands[0]), total(st.hands[1]), total(st.hands[2])],
-      played: st.played,
+      played,
       last: lastOk,
-      bottom: st.bottom
+      bottom: st.bottom,
+      open,
+      knownHands
     }
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 兜底出牌：三条硬约束
+   *   ① 不得拆炸弹：把四张同点拆成 1~3 张的候选一律剔除；
+   *      跟牌时若只剩这类候选，宁可过牌也不拆（炸弹整出不算拆）。
+   *   ② 不得把牌权白送：领出时按「外面同牌型能压住这手的张数」打分，
+   *      优先谁都压不住的一手（如最大单张/炸弹），别默认甩一张最小单牌
+   *      让下家顺手接管；不把「可能存在炸弹」当成所有牌都失控。
+   *   ③ 领出永不返回 null：canPass=false 且合法候选非空时必须给出一手牌。
+   * ------------------------------------------------------------------ */
+
+  // 数「外面能压住这手的牌」有几个（只算同牌型/同长度、更大点数；炸弹另算）。
+  // 这是给领出排序用的粗粒度代价，越小越能保住牌权。
+  function leadBeatCost(counts, m) {
+    if (m.type === 'rocket') return 0
+    let need
+    if (m.type === 'pair' || m.type === 'pairseq') need = 2
+    else if (m.type === 'trio' || m.type === 'trio1' || m.type === 'trio2' ||
+      m.type === 'plane' || m.type === 'plane1' || m.type === 'plane2') need = 3
+    else if (m.type === 'bomb' || m.type === 'four2' || m.type === 'four2pair') need = 4
+    else need = 1                                  // single / straight
+    const len = m.len || 1
+    const isSeq = m.type === 'straight' || m.type === 'pairseq' ||
+      m.type === 'plane' || m.type === 'plane1' || m.type === 'plane2'
+    let n = 0
+    if (isSeq) {
+      // 顺子/连对/飞机：2 和王不进，起点上限 14
+      for (let s = m.rank + 1; s + len - 1 <= 14; s++) {
+        let ok = true
+        for (let r = s; r < s + len; r++) if (counts[r - 3] < need) { ok = false; break }
+        if (ok) n++
+      }
+    } else {
+      for (let i = m.rank - 2; i < N; i++) if (counts[i] >= need) n++
+    }
+    // 王炸能压一切非炸弹牌（不作为「全都失控」处理，只加 1 点代价）
+    if (m.type !== 'bomb' && m.type !== 'rocket' && counts[13] > 0 && counts[14] > 0) n++
+    return n
   }
 
   function fallbackMove(st, seat) {
     const { moves, canPass } = legalMoves(st, seat)
     if (!moves.length) return { move: null }
-    // 领出：出最小的一手；跟牌：出能压过去里最小的
-    const sorted = moves.slice().sort((a, b) => (a.cards.length - b.cards.length) || (a.rank - b.rank))
+    const hand = st.hands[seat]
+    const played = (st.played && st.played.length === N) ? st.played : zero()
+    const rest = DDZ.unseen(hand, played)
+    const restPlan = m => DDZ.planCount(DDZ.minus(hand, m.cards))
+
+    // ① 剔掉拆炸弹的候选
+    let pool = moves.filter(m => !DDZ.breaksBomb(hand, m))
+    if (!pool.length) {
+      // 跟牌：能压的牌都要拆炸弹 → 宁可过，也不拆
+      if (canPass) return { move: null }
+      // 领出绝不返回 null；优先整出炸弹（不拆），最后才退回全量候选
+      const whole = moves.filter(m => m.type === 'bomb' || m.type === 'rocket')
+      pool = whole.length ? whole : moves
+    }
+
+    // ② 领出：一手走完最优先；否则按「被压代价」从小到大，保住牌权
+    const sorted = pool.slice().sort((a, b) => {
+      if (!canPass) {
+        const winA = DDZ.total(DDZ.minus(hand, a.cards)) === 0 ? -1000 : 0
+        const winB = DDZ.total(DDZ.minus(hand, b.cards)) === 0 ? -1000 : 0
+        const costA = winA || leadBeatCost(rest, a) + (a.type === 'bomb' || a.type === 'rocket' ? 100 : 0)
+        const costB = winB || leadBeatCost(rest, b) + (b.type === 'bomb' || b.type === 'rocket' ? 100 : 0)
+        if (costA !== costB) return costA - costB
+        const pa = restPlan(a), pb = restPlan(b)
+        if (pa !== pb) return pa - pb
+        // 同等代价优先多出牌、再优先小点数
+        return (b.cards.length - a.cards.length) || (a.rank - b.rank)
+      }
+      // 跟牌：出代价最小的（张数少、点数小）
+      return (a.cards.length - b.cards.length) || (a.rank - b.rank)
+    })
     return { move: sorted[0] }
   }
 
-  function aiMove(st, seat) {
+  // 建议合法性：牌面完全一致（各自排序后比对）才算落在合法候选里
+  function moveKey(m) {
+    return m && Array.isArray(m.cards) ? m.cards.slice().sort((a, b) => a - b).join(',') : ''
+  }
+
+  function aiMove(st, seat, info) {
     const t0 = Date.now()
     const { moves, canPass } = legalMoves(st, seat)
     if (!moves.length) return { move: null, reason: '', ms: 0 }
     let res = null
     try {
-      res = DDZ.advise(adviseState(st, seat), { tier: st.tiers[seat] })
+      res = DDZ.advise(adviseState(st, seat, info), { tier: st.tiers[seat] })
     } catch (e) {
       res = null
     }
-    // 引擎判定「不划算、先过」时，AI 也要真的过；否则之前会退成出最小一手，等于从不放牌
+    // 引擎判定「不划算、先过」时，AI 也要真的过；否则之前会退成出最小一手，等于从不放牌。
+    // 但「领出要过」是非法建议（领出不能过），必须落到兜底领出一手，不能把牌权白送。
     if (res && res.pass && canPass) return { move: null, reason: res.reason || '', win: res.win, ms: Date.now() - t0 }
-    const valid = res && !res.pass && res.move && moves.some(m => m.cards.join(',') === res.move.cards.join(','))
+
+    const legalSet = new Set(moves.map(moveKey))
+    const key = res && !res.pass ? moveKey(res.move) : ''
+    // 非法建议（牌面不在合法候选里）不落地；合法但拆炸弹的建议同样不落地
+    const valid = !!key && legalSet.has(key) && !DDZ.breaksBomb(st.hands[seat], res.move)
     if (valid) return { move: res.move, reason: res.reason || '', win: res.win, ms: Date.now() - t0 }
+
+    // 非法建议不落地：领出必须走兜底出牌（永不返回 null）；跟牌可以过。
     const fb = fallbackMove(st, seat)
-    return { move: fb.move, reason: res && res.pass ? '这手牌不划算，先过' : '', ms: Date.now() - t0 }
+    const reason = (res && res.pass)
+      ? '引擎建议过牌，但领出不能过，兜底领出一手'
+      : (key ? '引擎建议不合法或会拆炸弹，已走兜底' : '')
+    return { move: fb.move, reason, ms: Date.now() - t0 }
   }
 
   // 提示：所有能出的牌（按大小/张数排好）+ 不出（跟牌时）
@@ -1386,7 +1670,8 @@ function GameCore(DDZ) {
   }
 
   return {
-    createGame, cloneState, strength,
+    createGame, cloneState, strength, strengthBreakdown, explainStrength,
+    STRENGTH_WEIGHTS, BID_THRESHOLDS, DOUBLE_THRESHOLDS,
     bidSeat, bidOptions, applyBid, aiBid,
     aiDouble, applyDouble, applyOpen,
     legalMoves, applyPlay, applyPass,

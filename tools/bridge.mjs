@@ -71,7 +71,7 @@ function decide(body) {
 const server = createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, engine: 'doudizhu-assistant' }));
+    res.end(JSON.stringify({ ok: true, engine: 'doudizhu-assistant', src: DDZ.__src, sha: DDZ.__sha }));
     return;
   }
   if (req.method !== 'POST' || req.url !== '/move') {

@@ -33,3 +33,6 @@ Thumbs.db
 
 # Kimi UI 原型（本地参考，不随插件发布）
 ui-kimi/
+
+# 竞技场跑分结果（体积大，按需本地重跑）
+arena/result-*.json
