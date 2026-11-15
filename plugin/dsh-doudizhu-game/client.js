@@ -2148,8 +2148,9 @@ const I18N = {
 const CSS = String.raw`
 /* ============================================================
    斗地主插件 · 浅色柔和可爱视觉（移植自 ui-kimi 原型）
-   令牌与类名与交接文档一一对应；所有规则均限定在 .ddz-root 内，
+   令牌与类名与交接文档一一对应。面板规则都挂在 .ddz-root 下，
    不引入全局重置，避免污染宿主 DSH UI。
+   「更多」菜单行 .ddz-more-row 渲染在宿主菜单里，不在 .ddz-root 内，所以不加前缀。
    ============================================================ */
 
 /* ---------- 设计令牌（浅色为默认） ---------- */
@@ -2241,101 +2242,101 @@ const CSS = String.raw`
 .ddz-root > .ddz-screen.is-on { opacity: 1; pointer-events: auto; }
 
 /* ---------- 通用按钮 ---------- */
-.ddz-btn {
+.ddz-root .ddz-btn {
   min-height: 44px; padding: 0 20px; border-radius: var(--ddz-radius-btn);
   font-size: 14px; font-weight: 600; letter-spacing: .02em;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform .15s ease-out, box-shadow .15s ease-out, background .15s ease-out, opacity .15s;
 }
-.ddz-btn:active { transform: scale(.97); }
-.ddz-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-.ddz-btn--primary {
+.ddz-root .ddz-btn:active { transform: scale(.97); }
+.ddz-root .ddz-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.ddz-root .ddz-btn--primary {
   color: #fff;
   background: linear-gradient(150deg, var(--ddz-accent) 0%, var(--ddz-accent-deep) 100%);
   box-shadow: 0 6px 16px rgba(75, 163, 227, .35);
   min-width: 160px;
 }
-.ddz-btn--primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(75, 163, 227, .45); transform: translateY(-1px); }
-.ddz-btn--ghost {
+.ddz-root .ddz-btn--primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(75, 163, 227, .45); transform: translateY(-1px); }
+.ddz-root .ddz-btn--ghost {
   color: var(--ddz-accent-deep); background: var(--ddz-panel-solid);
   border: 1px solid var(--ddz-line-strong);
 }
-.ddz-btn--ghost:hover:not(:disabled) { background: var(--ddz-accent-weak); }
-.ddz-btn--danger {
+.ddz-root .ddz-btn--ghost:hover:not(:disabled) { background: var(--ddz-accent-weak); }
+.ddz-root .ddz-btn--danger {
   color: var(--ddz-bad); background: var(--ddz-panel-solid);
   border: 1px solid rgba(240, 113, 120, .45);
 }
-.ddz-btn--danger:hover:not(:disabled) { background: rgba(240, 113, 120, .10); }
+.ddz-root .ddz-btn--danger:hover:not(:disabled) { background: rgba(240, 113, 120, .10); }
 
 /* ============================================================
    开局设置页 .ddz-setup
    ============================================================ */
-.ddz-setup {
+.ddz-root .ddz-setup {
   background: var(--ddz-felt);
   align-items: center; justify-content: center; padding: 24px; overflow-y: auto;
 }
-.ddz-setup-card {
+.ddz-root .ddz-setup-card {
   position: relative; width: 100%; max-width: 720px;
   background: var(--ddz-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--ddz-line); border-radius: 22px;
   box-shadow: var(--ddz-shadow-panel);
   padding: 36px 40px 28px; overflow: hidden;
 }
-.ddz-setup-watermark {
+.ddz-root .ddz-setup-watermark {
   position: absolute; right: -40px; top: -20px; width: 300px; opacity: .14;
   pointer-events: none; transform: rotate(6deg);
 }
-.ddz-setup-head { position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-.ddz-setup-title { font-size: 28px; font-weight: 650; letter-spacing: .04em; display: flex; align-items: center; gap: 10px; }
-.ddz-whale-mark { width: 34px; height: 34px; flex: none; }
-.ddz-setup-sub { position: relative; color: var(--ddz-dim); font-size: 13px; margin-bottom: 26px; }
-.ddz-setup h3 { font-size: 14px; font-weight: 600; color: var(--ddz-dim); margin: 20px 0 10px; letter-spacing: .05em; }
+.ddz-root .ddz-setup-head { position: relative; display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.ddz-root .ddz-setup-title { font-size: 28px; font-weight: 650; letter-spacing: .04em; display: flex; align-items: center; gap: 10px; }
+.ddz-root .ddz-whale-mark { width: 34px; height: 34px; flex: none; }
+.ddz-root .ddz-setup-sub { position: relative; color: var(--ddz-dim); font-size: 13px; margin-bottom: 26px; }
+.ddz-root .ddz-setup h3 { font-size: 14px; font-weight: 600; color: var(--ddz-dim); margin: 20px 0 10px; letter-spacing: .05em; }
 
-.ddz-modecard { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.ddz-mode {
+.ddz-root .ddz-modecard { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ddz-root .ddz-mode {
   position: relative; min-height: 72px; border-radius: var(--ddz-radius-panel);
   background: var(--ddz-panel-solid); border: 1.5px solid var(--ddz-line);
   display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
   padding: 14px 18px; text-align: left; transition: all .18s ease-out;
 }
-.ddz-mode b { font-size: 16px; font-weight: 650; }
-.ddz-mode span { font-size: 12px; color: var(--ddz-dim); }
-.ddz-mode:hover { border-color: var(--ddz-line-strong); transform: translateY(-1px); }
-.ddz-mode.is-on { border-color: var(--ddz-accent); background: var(--ddz-accent-weak); box-shadow: 0 4px 14px rgba(75,163,227,.18); }
+.ddz-root .ddz-mode b { font-size: 16px; font-weight: 650; }
+.ddz-root .ddz-mode span { font-size: 12px; color: var(--ddz-dim); }
+.ddz-root .ddz-mode:hover { border-color: var(--ddz-line-strong); transform: translateY(-1px); }
+.ddz-root .ddz-mode.is-on { border-color: var(--ddz-accent); background: var(--ddz-accent-weak); box-shadow: 0 4px 14px rgba(75,163,227,.18); }
 
-.ddz-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.ddz-tier {
+.ddz-root .ddz-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ddz-root .ddz-tier {
   background: var(--ddz-panel-solid); border: 1.5px solid var(--ddz-line);
   border-radius: var(--ddz-radius-panel); padding: 14px 14px 12px;
   display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all .18s ease-out;
 }
-.ddz-tier.is-on { border-color: var(--ddz-accent); box-shadow: 0 4px 14px rgba(75,163,227,.16); }
-.ddz-tier .ddz-avatar { width: 40px; height: 40px; }
-.ddz-tier-name { font-size: 13px; font-weight: 600; }
-.ddz-tier select {
+.ddz-root .ddz-tier.is-on { border-color: var(--ddz-accent); box-shadow: 0 4px 14px rgba(75,163,227,.16); }
+.ddz-root .ddz-tier .ddz-avatar { width: 40px; height: 40px; }
+.ddz-root .ddz-tier-name { font-size: 13px; font-weight: 600; }
+.ddz-root .ddz-tier select {
   width: 100%; height: 36px; border-radius: 10px; font-size: 13px;
   border: 1px solid var(--ddz-line-strong); background: var(--ddz-bg); color: var(--ddz-text);
   padding: 0 8px; font-family: inherit;
 }
 
-.ddz-setup-actions { position: relative; display: flex; gap: 12px; margin-top: 28px; }
-.ddz-statsline {
+.ddz-root .ddz-setup-actions { position: relative; display: flex; gap: 12px; margin-top: 28px; }
+.ddz-root .ddz-statsline {
   position: relative; margin-top: 20px; padding-top: 14px;
   border-top: 1px solid var(--ddz-line);
   font-size: 12px; color: var(--ddz-dim); display: flex; gap: 18px; flex-wrap: wrap;
 }
-.ddz-statsline b.win { color: var(--ddz-good); font-weight: 650; }
-.ddz-statsline b.lose { color: var(--ddz-bad); font-weight: 650; }
+.ddz-root .ddz-statsline b.win { color: var(--ddz-good); font-weight: 650; }
+.ddz-root .ddz-statsline b.lose { color: var(--ddz-bad); font-weight: 650; }
 
 /* ---------- 头像 ---------- */
-.ddz-avatar {
+.ddz-root .ddz-avatar {
   width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none;
   border: 2px solid #fff; box-shadow: 0 0 0 2px rgba(126, 200, 232, .45), 0 4px 10px rgba(30,79,156,.15);
   background: var(--ddz-panel-solid);
   display: block; overflow: hidden;
 }
-.ddz-avatar--lg { width: 48px; height: 48px; }
-.ddz-crown {
+.ddz-root .ddz-avatar--lg { width: 48px; height: 48px; }
+.ddz-root .ddz-crown {
   position: absolute; top: -12px; right: -8px; width: 24px; height: 24px;
   filter: drop-shadow(0 2px 4px rgba(212, 168, 75, .5));
 }
@@ -2343,112 +2344,112 @@ const CSS = String.raw`
 /* ============================================================
    牌桌页
    ============================================================ */
-.ddz-table { background: var(--ddz-felt); }
+.ddz-root .ddz-table { background: var(--ddz-felt); }
 
-.ddz-topbar {
+.ddz-root .ddz-topbar {
   height: 48px; flex: none; display: flex; align-items: center; gap: 12px;
   padding: 0 16px; background: var(--ddz-panel); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--ddz-line); z-index: 30;
 }
-.ddz-title { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
-.ddz-title b { font-size: 17px; font-weight: 650; letter-spacing: .05em; }
-.ddz-title small { font-size: 12px; color: var(--ddz-dim); }
-.ddz-chips { display: flex; gap: 8px; align-items: center; }
-.ddz-chipbtn {
+.ddz-root .ddz-title { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.ddz-root .ddz-title b { font-size: 17px; font-weight: 650; letter-spacing: .05em; }
+.ddz-root .ddz-title small { font-size: 12px; color: var(--ddz-dim); }
+.ddz-root .ddz-chips { display: flex; gap: 8px; align-items: center; }
+.ddz-root .ddz-chipbtn {
   height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
   background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line-strong);
   color: var(--ddz-dim); display: inline-flex; align-items: center; gap: 5px;
   transition: all .15s ease-out; white-space: nowrap;
 }
-.ddz-chipbtn:hover { color: var(--ddz-accent-deep); border-color: var(--ddz-accent); }
-.ddz-chipbtn.is-on { background: var(--ddz-accent-weak); color: var(--ddz-accent-deep); border-color: var(--ddz-accent); }
-.ddz-chipbtn svg { width: 14px; height: 14px; }
+.ddz-root .ddz-chipbtn:hover { color: var(--ddz-accent-deep); border-color: var(--ddz-accent); }
+.ddz-root .ddz-chipbtn.is-on { background: var(--ddz-accent-weak); color: var(--ddz-accent-deep); border-color: var(--ddz-accent); }
+.ddz-root .ddz-chipbtn svg { width: 14px; height: 14px; }
 
 /* 记牌器 */
-.ddz-counterbar {
+.ddz-root .ddz-counterbar {
   flex: none; overflow: hidden; max-height: 0; transition: max-height .25s ease-out;
   border-bottom: 1px solid transparent;
 }
-.ddz-counterbar.is-open { max-height: 96px; border-bottom-color: var(--ddz-line); }
-.ddz-counterbar-in { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
-.ddz-count {
+.ddz-root .ddz-counterbar.is-open { max-height: 96px; border-bottom-color: var(--ddz-line); }
+.ddz-root .ddz-counterbar-in { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
+.ddz-root .ddz-count {
   min-width: 44px; padding: 5px 8px; border-radius: 10px; text-align: center;
   background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line);
   font-size: 12px; line-height: 1.35; transition: all .15s;
 }
-.ddz-count b { display: block; font-size: 13px; }
-.ddz-count .cnt { color: var(--ddz-dim); font-size: 11px; }
-.ddz-count.is-hot { border-color: var(--ddz-gold); box-shadow: 0 0 0 1px var(--ddz-gold), 0 2px 8px rgba(212,168,75,.25); }
-.ddz-count.is-zero { opacity: .35; }
+.ddz-root .ddz-count b { display: block; font-size: 13px; }
+.ddz-root .ddz-count .cnt { color: var(--ddz-dim); font-size: 11px; }
+.ddz-root .ddz-count.is-hot { border-color: var(--ddz-gold); box-shadow: 0 0 0 1px var(--ddz-gold), 0 2px 8px rgba(212,168,75,.25); }
+.ddz-root .ddz-count.is-zero { opacity: .35; }
 
 /* 底牌 + 倍率信息条 */
-.ddz-statusbar {
+.ddz-root .ddz-statusbar {
   flex: none; display: flex; align-items: center; justify-content: center; gap: 22px;
   padding: 10px 20px 0; flex-wrap: wrap;
 }
-.ddz-bottomcards { display: flex; align-items: center; gap: 8px; }
+.ddz-root .ddz-bottomcards { display: flex; align-items: center; gap: 8px; }
 .ddz-root #bottom-cards { display: flex; gap: 6px; }
-.ddz-bottomcards .lbl { font-size: 12px; color: var(--ddz-dim); margin-right: 2px; }
-.ddz-bottomcards .ddz-card { width: 40px; height: 56px; border-radius: 10px; padding: 4px 5px; }
-.ddz-bottomcards .ddz-card .rk { font-size: 14px; }
-.ddz-bottomcards .ddz-card .st { font-size: 11px; }
-.ddz-bottomcards .ddz-card--joker .rk { font-size: 9px; }
-.ddz-mult {
+.ddz-root .ddz-bottomcards .lbl { font-size: 12px; color: var(--ddz-dim); margin-right: 2px; }
+.ddz-root .ddz-bottomcards .ddz-card { width: 40px; height: 56px; border-radius: 10px; padding: 4px 5px; }
+.ddz-root .ddz-bottomcards .ddz-card .rk { font-size: 14px; }
+.ddz-root .ddz-bottomcards .ddz-card .st { font-size: 11px; }
+.ddz-root .ddz-bottomcards .ddz-card--joker .rk { font-size: 9px; }
+.ddz-root .ddz-mult {
   display: flex; align-items: baseline; gap: 6px;
   background: linear-gradient(135deg, rgba(229,190,107,.22), rgba(212,168,75,.10));
   border: 1px solid rgba(212,168,75,.45); border-radius: 12px; padding: 6px 14px;
 }
-.ddz-mult .x { font-size: 20px; font-weight: 800; color: var(--ddz-gold); letter-spacing: .02em; }
-.ddz-mult .t { font-size: 11px; color: var(--ddz-dim); }
-.ddz-statuschips { display: flex; gap: 6px; flex-wrap: wrap; }
-.ddz-statuschip {
+.ddz-root .ddz-mult .x { font-size: 20px; font-weight: 800; color: var(--ddz-gold); letter-spacing: .02em; }
+.ddz-root .ddz-mult .t { font-size: 11px; color: var(--ddz-dim); }
+.ddz-root .ddz-statuschips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ddz-root .ddz-statuschip {
   font-size: 11px; color: var(--ddz-dim); background: var(--ddz-panel-solid);
   border: 1px solid var(--ddz-line); border-radius: 999px; padding: 4px 10px; white-space: nowrap;
 }
-.ddz-statuschip b { color: var(--ddz-text); }
-.ddz-statuschip.bomb b { color: var(--ddz-bad); }
+.ddz-root .ddz-statuschip b { color: var(--ddz-text); }
+.ddz-root .ddz-statuschip.bomb b { color: var(--ddz-bad); }
 
 /* 座位行 */
-.ddz-seatrow { flex: none; display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 20px 0; }
-.ddz-seat {
+.ddz-root .ddz-seatrow { flex: none; display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 20px 0; }
+.ddz-root .ddz-seat {
   position: relative; display: flex; align-items: center; gap: 10px;
   background: var(--ddz-panel); backdrop-filter: blur(10px);
   border: 1.5px solid var(--ddz-line); border-radius: 16px;
   padding: 8px 14px 8px 8px; box-shadow: var(--ddz-shadow-soft);
   transition: border-color .2s, box-shadow .2s; max-width: 220px;
 }
-.ddz-seat.is-turn { border-color: var(--ddz-accent); animation: ddz-breathe 2s ease-in-out infinite; }
+.ddz-root .ddz-seat.is-turn { border-color: var(--ddz-accent); animation: ddz-breathe 2s ease-in-out infinite; }
 @keyframes ddz-breathe {
   0%, 100% { box-shadow: 0 0 0 0 rgba(75,163,227,.35), var(--ddz-shadow-soft); }
   50% { box-shadow: 0 0 0 6px rgba(75,163,227,0), var(--ddz-shadow-soft); }
 }
-.ddz-seat-av { position: relative; flex: none; }
-.ddz-seat-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ddz-seat-name { font-size: 13px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
-.ddz-seat-sub { font-size: 11px; color: var(--ddz-dim); }
-.ddz-tags { display: flex; gap: 4px; }
-.ddz-landlord-tag {
+.ddz-root .ddz-seat-av { position: relative; flex: none; }
+.ddz-root .ddz-seat-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ddz-root .ddz-seat-name { font-size: 13px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
+.ddz-root .ddz-seat-sub { font-size: 11px; color: var(--ddz-dim); }
+.ddz-root .ddz-tags { display: flex; gap: 4px; }
+.ddz-root .ddz-landlord-tag {
   font-size: 10px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #E5BE6B, var(--ddz-gold));
   padding: 1px 7px; border-radius: 999px;
 }
-.ddz-open-tag { font-size: 10px; font-weight: 600; color: #fff; background: var(--ddz-whale); padding: 1px 7px; border-radius: 999px; }
-.ddz-pass-tag {
+.ddz-root .ddz-open-tag { font-size: 10px; font-weight: 600; color: #fff; background: var(--ddz-whale); padding: 1px 7px; border-radius: 999px; }
+.ddz-root .ddz-pass-tag {
   position: absolute; right: -14px; top: -12px; font-size: 12px; font-weight: 700;
   color: var(--ddz-dim); background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line-strong);
   padding: 3px 9px; border-radius: 999px; transform: rotate(-6deg);
   animation: ddz-pass-pop .18s ease-out;
 }
 @keyframes ddz-pass-pop { from { opacity: 0; transform: rotate(-6deg) scale(.8); } to { opacity: 1; transform: rotate(-6deg) scale(1); } }
-.ddz-turnpill {
+.ddz-root .ddz-turnpill {
   align-self: center; background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line);
   border-radius: 999px; padding: 7px 18px; font-size: 13px; font-weight: 600; color: var(--ddz-dim);
   box-shadow: var(--ddz-shadow-soft); white-space: nowrap;
 }
-.ddz-turnpill b { color: var(--ddz-text); }
+.ddz-root .ddz-turnpill b { color: var(--ddz-text); }
 
 /* 中央 */
-.ddz-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; position: relative; }
-.ddz-mid::before {
+.ddz-root .ddz-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px 16px; position: relative; }
+.ddz-root .ddz-mid::before {
   content: ''; position: absolute; left: 50%; top: 50%; width: min(720px, 88%); height: 88%;
   transform: translate(-50%,-50%); border-radius: 50%;
   border: 1.5px solid rgba(75,163,227,.16);
@@ -2456,99 +2457,99 @@ const CSS = String.raw`
   box-shadow: inset 0 0 60px rgba(126,200,232,.10);
   pointer-events: none;
 }
-.ddz-mid-whale {
+.ddz-root .ddz-mid-whale {
   position: absolute; left: 50%; top: 50%; width: 150px; height: 150px;
   transform: translate(-50%,-50%); opacity: .055; pointer-events: none;
 }
-.ddz-mid-grid {
+.ddz-root .ddz-mid-grid {
   position: relative; display: grid; grid-template-columns: 1fr auto 1fr;
   align-items: center; gap: 24px; width: 100%; max-width: 900px;
 }
-.ddz-mid-center { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.ddz-sideplay { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 96px; justify-content: center; }
-.ddz-sideplay .who { font-size: 12px; color: var(--ddz-dim); }
-.ddz-sideplay .ddz-played { min-height: 0; }
-.ddz-sideplay .ddz-played .ddz-card { animation: none; }
-.ddz-sidepass {
+.ddz-root .ddz-mid-center { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ddz-root .ddz-sideplay { display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 96px; justify-content: center; }
+.ddz-root .ddz-sideplay .who { font-size: 12px; color: var(--ddz-dim); }
+.ddz-root .ddz-sideplay .ddz-played { min-height: 0; }
+.ddz-root .ddz-sideplay .ddz-played .ddz-card { animation: none; }
+.ddz-root .ddz-sidepass {
   font-size: 14px; font-weight: 700; color: var(--ddz-dim);
   background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line-strong);
   border-radius: 999px; padding: 6px 16px; transform: rotate(-5deg);
   box-shadow: var(--ddz-shadow-soft); animation: ddz-pass-pop .18s ease-out;
 }
-.ddz-lastlabel { font-size: 12px; color: var(--ddz-dim); letter-spacing: .04em; }
-.ddz-played { display: flex; min-height: 84px; align-items: center; }
-.ddz-played .ddz-card { margin-left: -18px; animation: ddz-fly-in .22s ease-out backwards; }
-.ddz-played .ddz-card:first-child { margin-left: 0; }
-.ddz-played .ddz-card:nth-child(1) { animation-delay: .00s; }
-.ddz-played .ddz-card:nth-child(2) { animation-delay: .05s; }
-.ddz-played .ddz-card:nth-child(3) { animation-delay: .10s; }
-.ddz-played .ddz-card:nth-child(4) { animation-delay: .15s; }
-.ddz-played .ddz-card:nth-child(5) { animation-delay: .20s; }
-.ddz-played .ddz-card:nth-child(6) { animation-delay: .25s; }
+.ddz-root .ddz-lastlabel { font-size: 12px; color: var(--ddz-dim); letter-spacing: .04em; }
+.ddz-root .ddz-played { display: flex; min-height: 84px; align-items: center; }
+.ddz-root .ddz-played .ddz-card { margin-left: -18px; animation: ddz-fly-in .22s ease-out backwards; }
+.ddz-root .ddz-played .ddz-card:first-child { margin-left: 0; }
+.ddz-root .ddz-played .ddz-card:nth-child(1) { animation-delay: .00s; }
+.ddz-root .ddz-played .ddz-card:nth-child(2) { animation-delay: .05s; }
+.ddz-root .ddz-played .ddz-card:nth-child(3) { animation-delay: .10s; }
+.ddz-root .ddz-played .ddz-card:nth-child(4) { animation-delay: .15s; }
+.ddz-root .ddz-played .ddz-card:nth-child(5) { animation-delay: .20s; }
+.ddz-root .ddz-played .ddz-card:nth-child(6) { animation-delay: .25s; }
 @keyframes ddz-fly-in { from { opacity: 0; transform: translateY(26px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.ddz-played.is-bomb .ddz-card { animation: ddz-bomb .32s ease-out; }
+.ddz-root .ddz-played.is-bomb .ddz-card { animation: ddz-bomb .32s ease-out; }
 @keyframes ddz-bomb {
   0% { transform: scale(1); filter: brightness(1); }
   40% { transform: scale(1.06); filter: brightness(1.35) drop-shadow(0 0 10px rgba(212,168,75,.8)); }
   100% { transform: scale(1); filter: brightness(1); }
 }
-.ddz-think { display: flex; align-items: center; gap: 8px; color: var(--ddz-dim); font-size: 13px; }
-.ddz-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ddz-accent-weak); border-top-color: var(--ddz-accent); animation: ddz-spin .8s linear infinite; }
+.ddz-root .ddz-think { display: flex; align-items: center; gap: 8px; color: var(--ddz-dim); font-size: 13px; }
+.ddz-root .ddz-spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ddz-accent-weak); border-top-color: var(--ddz-accent); animation: ddz-spin .8s linear infinite; }
 @keyframes ddz-spin { to { transform: rotate(360deg); } }
-.ddz-mid-empty { color: var(--ddz-dim); font-size: 13px; }
+.ddz-root .ddz-mid-empty { color: var(--ddz-dim); font-size: 13px; }
 
 /* 手牌 */
-.ddz-handwrap { flex: none; padding: 12px 0 4px; }
-.ddz-hand { display: flex; justify-content: center; align-items: flex-end; min-height: 136px; padding: 0 12px; }
-.ddz-hand .ddz-card { margin-left: -36px; transition: transform .15s ease-out, box-shadow .15s ease-out; }
-.ddz-hand .ddz-card:first-child { margin-left: 0; }
-.ddz-hand .ddz-card:hover { transform: translateY(-10px); }
-.ddz-hand .ddz-card.is-sel { transform: translateY(-18px); box-shadow: 0 0 0 2px var(--ddz-accent), 0 14px 22px rgba(75,163,227,.30); }
-.ddz-hand.is-disabled { opacity: .5; pointer-events: none; }
+.ddz-root .ddz-handwrap { flex: none; padding: 12px 0 4px; }
+.ddz-root .ddz-hand { display: flex; justify-content: center; align-items: flex-end; min-height: 136px; padding: 0 12px; }
+.ddz-root .ddz-hand .ddz-card { margin-left: -36px; transition: transform .15s ease-out, box-shadow .15s ease-out; }
+.ddz-root .ddz-hand .ddz-card:first-child { margin-left: 0; }
+.ddz-root .ddz-hand .ddz-card:hover { transform: translateY(-10px); }
+.ddz-root .ddz-hand .ddz-card.is-sel { transform: translateY(-18px); box-shadow: 0 0 0 2px var(--ddz-accent), 0 14px 22px rgba(75,163,227,.30); }
+.ddz-root .ddz-hand.is-disabled { opacity: .5; pointer-events: none; }
 
 /* 扑克牌面 */
-.ddz-card {
+.ddz-root .ddz-card {
   width: 80px; height: 112px; border-radius: var(--ddz-radius-card);
   background: var(--ddz-card-bg); border: 1px solid var(--ddz-line);
   box-shadow: 0 6px 14px rgba(30,79,156,.15), inset 0 1px 0 rgba(255,255,255,.7);
   display: flex; flex-direction: column; justify-content: space-between; padding: 8px 10px;
   font-weight: 700; position: relative; flex: none;
 }
-@media (prefers-color-scheme: dark) { .ddz-card { box-shadow: 0 3px 8px rgba(0,0,0,.35); } }
-.ddz-card .rk { font-size: 25px; line-height: 1.1; }
-.ddz-card .st { font-size: 20px; line-height: 1; }
-.ddz-card .rk.red, .ddz-card .st.red { color: var(--ddz-red); }
-.ddz-card .rk.ink, .ddz-card .st.ink { color: var(--ddz-card-ink); }
-.ddz-card--small { width: 56px; height: 80px; border-radius: 12px; padding: 6px 7px; }
-.ddz-card--small .rk { font-size: 19px; }
-.ddz-card--small .st { font-size: 14px; }
-.ddz-card--joker .rk { font-size: 15px; letter-spacing: 0; }
-.ddz-card--joker.ddz-card--small .rk { font-size: 11px; }
+@media (prefers-color-scheme: dark) { .ddz-root .ddz-card { box-shadow: 0 3px 8px rgba(0,0,0,.35); } }
+.ddz-root .ddz-card .rk { font-size: 25px; line-height: 1.1; }
+.ddz-root .ddz-card .st { font-size: 20px; line-height: 1; }
+.ddz-root .ddz-card .rk.red, .ddz-root .ddz-card .st.red { color: var(--ddz-red); }
+.ddz-root .ddz-card .rk.ink, .ddz-root .ddz-card .st.ink { color: var(--ddz-card-ink); }
+.ddz-root .ddz-card--small { width: 56px; height: 80px; border-radius: 12px; padding: 6px 7px; }
+.ddz-root .ddz-card--small .rk { font-size: 19px; }
+.ddz-root .ddz-card--small .st { font-size: 14px; }
+.ddz-root .ddz-card--joker .rk { font-size: 15px; letter-spacing: 0; }
+.ddz-root .ddz-card--joker.ddz-card--small .rk { font-size: 11px; }
 
 /* 牌背 */
-.ddz-back {
+.ddz-root .ddz-back {
   width: 34px; height: 48px; border-radius: 9px; flex: none;
   background: linear-gradient(150deg, #8FCEF0 0%, var(--ddz-accent) 60%, var(--ddz-accent-deep) 130%);
   border: 2px solid #fff; box-shadow: 0 3px 8px rgba(30,79,156,.18);
   position: relative; overflow: hidden;
 }
-.ddz-back::before {
+.ddz-root .ddz-back::before {
   content: ''; position: absolute; inset: 3px; border-radius: 6px;
   border: 1px solid rgba(255,255,255,.55);
   background: repeating-linear-gradient(45deg, rgba(255,255,255,.14) 0 4px, transparent 4px 8px);
 }
-.ddz-back::after {
+.ddz-root .ddz-back::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 14px; height: 10px;
   transform: translate(-50%,-50%); border-radius: 50% 50% 45% 45%;
   background: rgba(255,255,255,.85);
   clip-path: polygon(0 40%, 15% 0, 45% 20%, 60% 0, 75% 35%, 100% 20%, 85% 70%, 60% 100%, 25% 90%);
 }
-.ddz-cardstack { position: relative; width: 44px; height: 52px; flex: none; }
-.ddz-cardstack .ddz-back { position: absolute; width: 30px; height: 42px; }
-.ddz-cardstack .ddz-back:nth-child(1) { left: 0; top: 6px; transform: rotate(-8deg); opacity: .75; }
-.ddz-cardstack .ddz-back:nth-child(2) { left: 7px; top: 3px; transform: rotate(-2deg); opacity: .9; }
-.ddz-cardstack .ddz-back:nth-child(3) { left: 14px; top: 0; transform: rotate(5deg); }
-.ddz-cardstack .n {
+.ddz-root .ddz-cardstack { position: relative; width: 44px; height: 52px; flex: none; }
+.ddz-root .ddz-cardstack .ddz-back { position: absolute; width: 30px; height: 42px; }
+.ddz-root .ddz-cardstack .ddz-back:nth-child(1) { left: 0; top: 6px; transform: rotate(-8deg); opacity: .75; }
+.ddz-root .ddz-cardstack .ddz-back:nth-child(2) { left: 7px; top: 3px; transform: rotate(-2deg); opacity: .9; }
+.ddz-root .ddz-cardstack .ddz-back:nth-child(3) { left: 14px; top: 0; transform: rotate(5deg); }
+.ddz-root .ddz-cardstack .n {
   position: absolute; right: -8px; bottom: -4px; z-index: 2;
   background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line-strong);
   color: var(--ddz-accent-deep); font-size: 11px; font-weight: 700;
@@ -2556,131 +2557,131 @@ const CSS = String.raw`
 }
 
 /* 底部信息 + 操作 */
-.ddz-bottom { flex: none; padding: 4px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
-.ddz-myseat { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.ddz-myseat .ddz-seat { padding: 6px 16px 6px 6px; }
-.ddz-ring { position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); pointer-events: none; }
-.ddz-ring circle { fill: none; stroke: var(--ddz-accent); stroke-width: 3; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 1s linear, stroke .2s; }
-.ddz-ring circle.hot { stroke: var(--ddz-bad); }
-.ddz-info { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ddz-dim); padding: 0 8px; min-height: 18px; }
-.ddz-info .sel-n { color: var(--ddz-accent-deep); font-weight: 600; }
-.ddz-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-.ddz-actions .ddz-btn { min-height: 40px; padding: 0 18px; font-size: 13px; min-width: 0; }
+.ddz-root .ddz-bottom { flex: none; padding: 4px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+.ddz-root .ddz-myseat { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ddz-root .ddz-myseat .ddz-seat { padding: 6px 16px 6px 6px; }
+.ddz-root .ddz-ring { position: absolute; inset: -5px; width: calc(100% + 10px); height: calc(100% + 10px); pointer-events: none; }
+.ddz-root .ddz-ring circle { fill: none; stroke: var(--ddz-accent); stroke-width: 3; stroke-linecap: round; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 1s linear, stroke .2s; }
+.ddz-root .ddz-ring circle.hot { stroke: var(--ddz-bad); }
+.ddz-root .ddz-info { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ddz-dim); padding: 0 8px; min-height: 18px; }
+.ddz-root .ddz-info .sel-n { color: var(--ddz-accent-deep); font-weight: 600; }
+.ddz-root .ddz-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.ddz-root .ddz-actions .ddz-btn { min-height: 40px; padding: 0 18px; font-size: 13px; min-width: 0; }
 
 /* 建议卡 */
-.ddz-advice {
+.ddz-root .ddz-advice {
   position: absolute; right: 18px; bottom: 130px; width: 250px;
   background: var(--ddz-panel-solid); border: 1px solid var(--ddz-line);
   border-radius: 16px; box-shadow: var(--ddz-shadow-panel); padding: 14px 16px; z-index: 25;
   animation: ddz-advice-in .2s ease-out;
 }
 @keyframes ddz-advice-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.ddz-advice-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; margin-bottom: 8px; }
-.ddz-advice-head svg { width: 18px; height: 18px; }
-.ddz-advice-move { font-size: 14px; font-weight: 650; color: var(--ddz-accent-deep); margin-bottom: 4px; }
-.ddz-advice-why { font-size: 12px; color: var(--ddz-dim); line-height: 1.5; margin-bottom: 8px; }
-.ddz-advice-rate { font-size: 12px; color: var(--ddz-good); font-weight: 600; margin-bottom: 10px; }
-.ddz-advice .ddz-btn { width: 100%; min-height: 36px; font-size: 13px; }
+.ddz-root .ddz-advice-head { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+.ddz-root .ddz-advice-head svg { width: 18px; height: 18px; }
+.ddz-root .ddz-advice-move { font-size: 14px; font-weight: 650; color: var(--ddz-accent-deep); margin-bottom: 4px; }
+.ddz-root .ddz-advice-why { font-size: 12px; color: var(--ddz-dim); line-height: 1.5; margin-bottom: 8px; }
+.ddz-root .ddz-advice-rate { font-size: 12px; color: var(--ddz-good); font-weight: 600; margin-bottom: 10px; }
+.ddz-root .ddz-advice .ddz-btn { width: 100%; min-height: 36px; font-size: 13px; }
 
 /* ============================================================
    弹层
    ============================================================ */
-.ddz-overlay {
+.ddz-root .ddz-overlay {
   position: absolute; inset: 0; background: rgba(27, 42, 68, .28);
   display: flex; align-items: center; justify-content: center; z-index: 50;
   opacity: 0; pointer-events: none; transition: opacity .2s ease-out; padding: 20px;
 }
-.ddz-overlay.is-on { opacity: 1; pointer-events: auto; }
-.ddz-dialog {
+.ddz-root .ddz-overlay.is-on { opacity: 1; pointer-events: auto; }
+.ddz-root .ddz-dialog {
   width: 100%; max-width: 460px; background: var(--ddz-panel-solid);
   border-radius: 20px; box-shadow: 0 24px 60px rgba(30,79,156,.25);
   padding: 26px 26px 22px; position: relative; overflow: hidden;
   transform: scale(.95); transition: transform .2s ease-out;
 }
-.ddz-overlay.is-on .ddz-dialog { transform: scale(1); }
-.ddz-dialog-strip { position: absolute; inset: 0 0 auto 0; height: 5px; }
-.ddz-dialog-strip.win { background: linear-gradient(90deg, rgba(61,191,143,.7), rgba(61,191,143,.15)); }
-.ddz-dialog-strip.lose { background: linear-gradient(90deg, rgba(240,113,120,.6), rgba(240,113,120,.12)); }
-.ddz-dialog-strip.info { background: linear-gradient(90deg, var(--ddz-accent), rgba(75,163,227,.15)); }
-.ddz-dialog h2 { font-size: 20px; font-weight: 650; margin-bottom: 6px; }
-.ddz-dialog h2.win { color: var(--ddz-good); }
-.ddz-dialog h2.lose { color: var(--ddz-bad); }
-.ddz-dialog p.sub { font-size: 13px; color: var(--ddz-dim); margin-bottom: 16px; line-height: 1.5; }
-.ddz-bid-opts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-.ddz-bid-opts .ddz-btn { flex: 1; min-width: 84px; }
-.ddz-props { margin-bottom: 16px; }
-.ddz-props-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 2px; border-bottom: 1px solid var(--ddz-line); }
-.ddz-props-row:last-child { border-bottom: none; }
-.ddz-props-row .k { color: var(--ddz-dim); }
-.ddz-props-row .v { font-weight: 600; }
-.ddz-props-row .v.gold { color: var(--ddz-gold); }
-.ddz-score-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--ddz-line); }
-.ddz-score-row:last-child { border-bottom: none; }
-.ddz-score-row .nm { font-size: 13px; font-weight: 600; flex: 1; }
-.ddz-score-row .sc { font-size: 15px; font-weight: 700; }
-.ddz-score-row .sc.plus { color: var(--ddz-good); }
-.ddz-score-row .sc.minus { color: var(--ddz-bad); }
-.ddz-score-row .ddz-seat-av { position: relative; }
-.ddz-dialog-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-.ddz-dialog-actions .ddz-btn { flex: 1; min-width: 110px; }
-.ddz-dialog .dim-note { font-size: 12px; color: var(--ddz-dim); text-align: center; margin-top: 12px; }
+.ddz-root .ddz-overlay.is-on .ddz-dialog { transform: scale(1); }
+.ddz-root .ddz-dialog-strip { position: absolute; inset: 0 0 auto 0; height: 5px; }
+.ddz-root .ddz-dialog-strip.win { background: linear-gradient(90deg, rgba(61,191,143,.7), rgba(61,191,143,.15)); }
+.ddz-root .ddz-dialog-strip.lose { background: linear-gradient(90deg, rgba(240,113,120,.6), rgba(240,113,120,.12)); }
+.ddz-root .ddz-dialog-strip.info { background: linear-gradient(90deg, var(--ddz-accent), rgba(75,163,227,.15)); }
+.ddz-root .ddz-dialog h2 { font-size: 20px; font-weight: 650; margin-bottom: 6px; }
+.ddz-root .ddz-dialog h2.win { color: var(--ddz-good); }
+.ddz-root .ddz-dialog h2.lose { color: var(--ddz-bad); }
+.ddz-root .ddz-dialog p.sub { font-size: 13px; color: var(--ddz-dim); margin-bottom: 16px; line-height: 1.5; }
+.ddz-root .ddz-bid-opts { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.ddz-root .ddz-bid-opts .ddz-btn { flex: 1; min-width: 84px; }
+.ddz-root .ddz-props { margin-bottom: 16px; }
+.ddz-root .ddz-props-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 2px; border-bottom: 1px solid var(--ddz-line); }
+.ddz-root .ddz-props-row:last-child { border-bottom: none; }
+.ddz-root .ddz-props-row .k { color: var(--ddz-dim); }
+.ddz-root .ddz-props-row .v { font-weight: 600; }
+.ddz-root .ddz-props-row .v.gold { color: var(--ddz-gold); }
+.ddz-root .ddz-score-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--ddz-line); }
+.ddz-root .ddz-score-row:last-child { border-bottom: none; }
+.ddz-root .ddz-score-row .nm { font-size: 13px; font-weight: 600; flex: 1; }
+.ddz-root .ddz-score-row .sc { font-size: 15px; font-weight: 700; }
+.ddz-root .ddz-score-row .sc.plus { color: var(--ddz-good); }
+.ddz-root .ddz-score-row .sc.minus { color: var(--ddz-bad); }
+.ddz-root .ddz-score-row .ddz-seat-av { position: relative; }
+.ddz-root .ddz-dialog-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.ddz-root .ddz-dialog-actions .ddz-btn { flex: 1; min-width: 110px; }
+.ddz-root .ddz-dialog .dim-note { font-size: 12px; color: var(--ddz-dim); text-align: center; margin-top: 12px; }
 
 /* toast */
-.ddz-toast {
+.ddz-root .ddz-toast {
   position: absolute; right: 18px; bottom: 24px; z-index: 80;
   background: var(--ddz-panel-solid); color: var(--ddz-text);
   border: 1px solid var(--ddz-line-strong); border-left: 3px solid var(--ddz-accent);
   border-radius: 12px; padding: 11px 16px; font-size: 13px; box-shadow: var(--ddz-shadow-panel);
   animation: ddz-toast-in .18s ease-out; max-width: 300px;
 }
-.ddz-toast.bad { border-left-color: var(--ddz-bad); }
+.ddz-root .ddz-toast.bad { border-left-color: var(--ddz-bad); }
 
 /* 复盘步骤 */
-.ddz-replay-step { background: var(--ddz-accent-weak); border-radius: 12px; padding: 12px 14px; font-size: 13px; margin-bottom: 12px; min-height: 64px; line-height: 1.6; }
-.ddz-replay-step b { color: var(--ddz-accent-deep); }
+.ddz-root .ddz-replay-step { background: var(--ddz-accent-weak); border-radius: 12px; padding: 12px 14px; font-size: 13px; margin-bottom: 12px; min-height: 64px; line-height: 1.6; }
+.ddz-root .ddz-replay-step b { color: var(--ddz-accent-deep); }
 
 /* 帮助弹层 */
-.ddz-help-list { font-size: 13px; line-height: 1.8; color: var(--ddz-text); }
-.ddz-help-list li { margin-left: 18px; margin-bottom: 4px; }
-.ddz-help-list kbd { background: var(--ddz-accent-weak); border-radius: 6px; padding: 1px 7px; font-size: 12px; font-family: inherit; }
+.ddz-root .ddz-help-list { font-size: 13px; line-height: 1.8; color: var(--ddz-text); }
+.ddz-root .ddz-help-list li { margin-left: 18px; margin-bottom: 4px; }
+.ddz-root .ddz-help-list kbd { background: var(--ddz-accent-weak); border-radius: 6px; padding: 1px 7px; font-size: 12px; font-family: inherit; }
 
 @media (max-width: 720px) {
-  .ddz-topbar { height: auto; min-height: 48px; flex-wrap: wrap; padding: 6px 12px; row-gap: 4px; }
-  .ddz-chips { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
-  .ddz-chips::-webkit-scrollbar { display: none; }
-  .ddz-toast { top: 104px; bottom: auto; right: 12px; }
-  .ddz-tiers { grid-template-columns: 1fr; }
-  .ddz-tiers .ddz-tier { flex-direction: row; justify-content: flex-start; }
-  .ddz-tiers .ddz-tier select { max-width: 180px; }
-  .ddz-setup-card { padding: 26px 22px 22px; }
-  .ddz-title small { display: none; }
-  .ddz-seat { max-width: 46vw; }
-  .ddz-seat-sub { display: none; }
-  .ddz-advice { right: 12px; left: 12px; width: auto; bottom: 150px; }
-  .ddz-card { width: 56px; height: 80px; padding: 5px 6px; border-radius: 11px; }
-  .ddz-card .rk { font-size: 18px; }
-  .ddz-card .st { font-size: 13px; }
-  .ddz-card--joker .rk { font-size: 11px; }
-  .ddz-card--small { width: 44px; height: 62px; padding: 4px 5px; }
-  .ddz-card--small .rk { font-size: 15px; }
-  .ddz-card--small .st { font-size: 11px; }
-  .ddz-card--joker.ddz-card--small .rk { font-size: 9px; }
-  .ddz-hand { min-height: 96px; }
-  .ddz-hand .ddz-card { margin-left: -38px; }
-  .ddz-hand .ddz-card.is-sel { transform: translateY(-12px); }
-  .ddz-statusbar { gap: 10px; padding: 8px 12px 0; }
-  .ddz-mult .x { font-size: 16px; }
-  .ddz-mid-grid { grid-template-columns: 1fr auto 1fr; gap: 8px; }
-  .ddz-sideplay .ddz-played .ddz-card { margin-left: -26px; }
-  .ddz-mid::before { width: 96%; height: 92%; }
-  .ddz-seatrow { flex-wrap: wrap; row-gap: 8px; padding: 10px 14px 0; }
-  .ddz-turnpill { order: -1; width: 100%; text-align: center; padding: 5px 12px; font-size: 12px; }
-  .ddz-seat { gap: 6px; max-width: 47vw; }
-  .ddz-seat-name { font-size: 12px; }
-  .ddz-cardstack { width: 36px; height: 46px; }
-  .ddz-cardstack .ddz-back { width: 24px; height: 34px; }
-  .ddz-chipbtn .lbl { display: none; }
-  .ddz-chipbtn { padding: 0 9px; }
+  .ddz-root .ddz-topbar { height: auto; min-height: 48px; flex-wrap: wrap; padding: 6px 12px; row-gap: 4px; }
+  .ddz-root .ddz-chips { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .ddz-root .ddz-chips::-webkit-scrollbar { display: none; }
+  .ddz-root .ddz-toast { top: 104px; bottom: auto; right: 12px; }
+  .ddz-root .ddz-tiers { grid-template-columns: 1fr; }
+  .ddz-root .ddz-tiers .ddz-tier { flex-direction: row; justify-content: flex-start; }
+  .ddz-root .ddz-tiers .ddz-tier select { max-width: 180px; }
+  .ddz-root .ddz-setup-card { padding: 26px 22px 22px; }
+  .ddz-root .ddz-title small { display: none; }
+  .ddz-root .ddz-seat { max-width: 46vw; }
+  .ddz-root .ddz-seat-sub { display: none; }
+  .ddz-root .ddz-advice { right: 12px; left: 12px; width: auto; bottom: 150px; }
+  .ddz-root .ddz-card { width: 56px; height: 80px; padding: 5px 6px; border-radius: 11px; }
+  .ddz-root .ddz-card .rk { font-size: 18px; }
+  .ddz-root .ddz-card .st { font-size: 13px; }
+  .ddz-root .ddz-card--joker .rk { font-size: 11px; }
+  .ddz-root .ddz-card--small { width: 44px; height: 62px; padding: 4px 5px; }
+  .ddz-root .ddz-card--small .rk { font-size: 15px; }
+  .ddz-root .ddz-card--small .st { font-size: 11px; }
+  .ddz-root .ddz-card--joker.ddz-card--small .rk { font-size: 9px; }
+  .ddz-root .ddz-hand { min-height: 96px; }
+  .ddz-root .ddz-hand .ddz-card { margin-left: -38px; }
+  .ddz-root .ddz-hand .ddz-card.is-sel { transform: translateY(-12px); }
+  .ddz-root .ddz-statusbar { gap: 10px; padding: 8px 12px 0; }
+  .ddz-root .ddz-mult .x { font-size: 16px; }
+  .ddz-root .ddz-mid-grid { grid-template-columns: 1fr auto 1fr; gap: 8px; }
+  .ddz-root .ddz-sideplay .ddz-played .ddz-card { margin-left: -26px; }
+  .ddz-root .ddz-mid::before { width: 96%; height: 92%; }
+  .ddz-root .ddz-seatrow { flex-wrap: wrap; row-gap: 8px; padding: 10px 14px 0; }
+  .ddz-root .ddz-turnpill { order: -1; width: 100%; text-align: center; padding: 5px 12px; font-size: 12px; }
+  .ddz-root .ddz-seat { gap: 6px; max-width: 47vw; }
+  .ddz-root .ddz-seat-name { font-size: 12px; }
+  .ddz-root .ddz-cardstack { width: 36px; height: 46px; }
+  .ddz-root .ddz-cardstack .ddz-back { width: 24px; height: 34px; }
+  .ddz-root .ddz-chipbtn .lbl { display: none; }
+  .ddz-root .ddz-chipbtn { padding: 0 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ddz-root .ddz-played .ddz-card, .ddz-root .ddz-seat.is-turn, .ddz-root .ddz-pass-tag { animation: none !important; }
@@ -2694,7 +2695,7 @@ const CSS = String.raw`
   background: none; border: none; font-family: inherit;
 }
 .ddz-more-row:hover { background: rgba(127, 127, 127, .12); }
-.ddz-btn.is-on { border-color: var(--ddz-accent); background: var(--ddz-accent-weak); color: var(--ddz-accent-deep); }
+.ddz-root .ddz-btn.is-on { border-color: var(--ddz-accent); background: var(--ddz-accent-weak); color: var(--ddz-accent-deep); }
 `
 
     /* ================= 4. sota 档（DouZero 纯 JS 前向） ================= */
@@ -2868,6 +2869,51 @@ const CSS = String.raw`
     return s;
   }
 
+  // 地主模型的全部 initializer。名字和形状都写死：不认识的名字直接拒绝，
+  // 避免把张量名当成对象键时写到 __proto__，也避免超大 dims 把内存撑爆。
+  const MAX_DIM = 1024;
+  const MAX_ELEMS = 262144;
+  const LANDLORD_SHAPES = {
+    'onnx::LSTM_131': [1, 512, 162],
+    'onnx::LSTM_132': [1, 512, 128],
+    'onnx::LSTM_133': [1, 1024],
+    'base.dense1.weight': [512, 501],
+    'base.dense1.bias': [512],
+    'base.dense2.weight': [512, 512],
+    'base.dense2.bias': [512],
+    'base.dense3.weight': [512, 512],
+    'base.dense3.bias': [512],
+    'base.dense4.weight': [512, 512],
+    'base.dense4.bias': [512],
+    'base.dense5.weight': [512, 512],
+    'base.dense5.bias': [512],
+    'base.dense6.weight': [1, 512],
+    'base.dense6.bias': [1]
+  };
+
+  function sameDims(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  function knownShape(name) {
+    if (typeof name !== 'string' || !Object.prototype.hasOwnProperty.call(LANDLORD_SHAPES, name)) return null;
+    return LANDLORD_SHAPES[name];
+  }
+
+  function elemsOf(dims) {
+    if (!dims || !dims.length || dims.length > 4) throw new Error('onnx: 维度超出地主模型');
+    let n = 1;
+    for (let i = 0; i < dims.length; i++) {
+      const d = dims[i];
+      if ((d | 0) !== d || d <= 0 || d > MAX_DIM) throw new Error('onnx: 维度超出地主模型');
+      if (n > Math.floor(MAX_ELEMS / d)) throw new Error('onnx: 张量超出地主模型');
+      n *= d;
+    }
+    return n;
+  }
+
   // TensorProto → { dims, data: Float32Array }
   function readTensor(tp) {
     const fs = readFields(tp);
@@ -2888,28 +2934,37 @@ const CSS = String.raw`
       else if (f.f === 9 && f.t === 2) raw = f.v;
     }
     if (dataType !== 1) throw new Error('onnx: 只支持 float32，收到 data_type=' + dataType);
+    // 先按维度封顶，再对数据长度；dims 报大数时不要按它去分配。
+    const expect = elemsOf(dims);
     let data;
     if (raw) {
-      data = new Float32Array(raw.length >> 2);
+      if (raw.length !== expect * 4) throw new Error('onnx: 张量长度与维度不符');
+      data = new Float32Array(expect);
       const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-      for (let i = 0; i < data.length; i++) data[i] = view.getFloat32(i * 4, true);
+      for (let i = 0; i < expect; i++) data[i] = view.getFloat32(i * 4, true);
     } else {
+      if (floats.length !== expect) throw new Error('onnx: 张量长度与维度不符');
       data = new Float32Array(floats);
     }
     return { name, dims, data };
   }
 
-  // 返回 { 名字: {dims, data} }，只要 graph.initializer
+  // 返回 { 名字: {dims, data} }，只要 graph.initializer。
+  // 表用空原型，并且只收下地主模型已知名字，避免 __proto__ 之类的键。
   function parseOnnx(input) {
     const b = input instanceof Uint8Array ? input : new Uint8Array(input);
+    if (b.length > FILES.landlord.bytes) throw new Error('onnx: 文件超出地主模型体积');
     const top = readFields(b);
     let graph = null;
     for (const f of top) if (f.f === 7 && f.t === 2) graph = f.v;
     if (!graph) throw new Error('onnx: 没有 graph');
-    const tensors = {};
+    const tensors = Object.create(null);
     for (const f of readFields(graph)) {
       if (f.f !== 5 || f.t !== 2) continue;
       const t = readTensor(f.v);
+      const want = knownShape(t.name);
+      if (!want || !sameDims(t.dims, want)) throw new Error('onnx: 拒绝模型形状之外的张量');
+      if (Object.prototype.hasOwnProperty.call(tensors, t.name)) throw new Error('onnx: 重复张量');
       tensors[t.name] = { dims: t.dims, data: t.data };
     }
     return tensors;
@@ -2925,8 +2980,11 @@ const CSS = String.raw`
   // ONNX LSTM 门序为 i o f c；卷积核布局 [1, 4*hidden, input] / [1, 4*hidden, hidden]
   function buildModel(tensors) {
     const get = (n) => {
-      const t = tensors[n];
-      if (!t) throw new Error('onnx: 缺少张量 ' + n);
+      const t = tensors && tensors[n];
+      const want = knownShape(n);
+      if (!t || !want || !sameDims(t.dims, want) || !t.data || t.data.length !== elemsOf(want)) {
+        throw new Error('onnx: 缺少或拒绝张量 ' + n);
+      }
       return t;
     };
     const W = get('onnx::LSTM_131'); // [1, 512, 162]
@@ -3043,15 +3101,30 @@ const CSS = String.raw`
     return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
   }
 
+  // 算不出摘要就拒绝，不能当成「没有 sha256 也可以加载」。
   function sha256Hex(buf) {
-    const c = typeof crypto !== 'undefined' ? crypto : null;
-    if (!c || !c.subtle) return Promise.resolve('');
-    return c.subtle.digest('SHA-256', buf).then((d) => {
-      const u = new Uint8Array(d);
-      let s = '';
-      for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16);
-      return s;
-    });
+    const fail = () => Promise.reject(new Error('sha256 不可用，拒绝加载'));
+    try {
+      const c = typeof crypto !== 'undefined' ? crypto : null;
+      const subtle = c && c.subtle;
+      if (!subtle || typeof subtle.digest !== 'function') return fail();
+      return Promise.resolve()
+        .then(() => subtle.digest('SHA-256', buf))
+        .then((d) => {
+          const u = new Uint8Array(d);
+          if (u.length !== 32) throw new Error('sha256 不可用，拒绝加载');
+          let s = '';
+          for (let i = 0; i < u.length; i++) s += (u[i] < 16 ? '0' : '') + u[i].toString(16);
+          if (s.length !== 64) throw new Error('sha256 不可用，拒绝加载');
+          return s;
+        })
+        .catch((err) => {
+          if (err && err.message === 'sha256 不可用，拒绝加载') throw err;
+          throw new Error('sha256 不可用，拒绝加载');
+        });
+    } catch (e) {
+      return fail();
+    }
   }
 
   async function readCache(key) {
@@ -3074,12 +3147,38 @@ const CSS = String.raw`
     } catch (e) { /* 配额或隐私模式，忽略 */ }
   }
 
+  async function purgeCacheEntry(key) {
+    if (typeof caches === 'undefined' || !caches) return;
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      if (cache && typeof cache.delete === 'function') await cache.delete(key);
+    } catch (e) { /* ignore */ }
+  }
+
+  async function purgeCacheStorage() {
+    if (typeof caches === 'undefined' || !caches || typeof caches.delete !== 'function') return;
+    try { await caches.delete(CACHE_NAME); } catch (e) { /* ignore */ }
+  }
+
+  async function cancelStream(stream) {
+    try {
+      if (stream && typeof stream.cancel === 'function') await stream.cancel();
+    } catch (e) { /* ignore */ }
+  }
+
   async function download(url, expectBytes) {
-    const res = await fetch(url, { mode: 'cors' });
+    const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
     if (!res.ok) throw new Error('下载失败 HTTP ' + res.status);
-    const total = Number(res.headers.get('content-length')) || expectBytes || 0;
+    const limit = expectBytes > 0 ? expectBytes : 0;
+    const declared = Number(res.headers.get('content-length'));
+    // content-length 已经超了就别把 body 读进来
+    if (limit && Number.isFinite(declared) && declared > limit) {
+      await cancelStream(res.body);
+      throw new Error('体积超出：' + declared + ' > ' + limit);
+    }
     if (!res.body || typeof res.body.getReader !== 'function') {
       const buf = new Uint8Array(await res.arrayBuffer());
+      if (limit && buf.length > limit) throw new Error('体积超出：' + buf.length + ' > ' + limit);
       state.progress = 1; emit();
       return buf;
     }
@@ -3089,9 +3188,15 @@ const CSS = String.raw`
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      chunks.push(value);
-      got += value.length;
-      if (total) { state.progress = Math.min(0.99, got / total); emit(); }
+      const n = value && value.length ? value.length : 0;
+      // 超出预期就停，不要先把整段超大 body 拼起来
+      if (limit && got + n > limit) {
+        await cancelStream(reader);
+        throw new Error('体积超出：' + (got + n) + ' > ' + limit);
+      }
+      if (n) chunks.push(value);
+      got += n;
+      if (limit) { state.progress = Math.min(0.99, got / limit); emit(); }
     }
     const buf = new Uint8Array(got);
     let o = 0;
@@ -3101,49 +3206,87 @@ const CSS = String.raw`
 
   // 加载地主模型；重复调用复用同一个 Promise
   let loading = null;
+  let generation = 0;
+  let cacheClear = Promise.resolve();
   function load(opts) {
-    if (state.status === 'ready') return Promise.resolve(true);
+    if (state.status === 'ready' && state.model) return Promise.resolve(true);
     if (loading) return loading;
     const options = opts || {};
     const meta = FILES.landlord;
     const sources = options.sources || (options.url ? [options.url] : MIRRORS);
     const cacheKey = 'sota:' + meta.file;
-    state.status = 'downloading'; state.progress = 0; state.error = ''; emit();
-    loading = (async () => {
-      let bytes = await readCache(cacheKey);
-      if (bytes && bytes.length !== meta.bytes) bytes = null;
-      if (!bytes) {
-        const fails = [];
-        for (const base of sources) {
-          const url = base + meta.file;
-          try {
-            const got = await download(url, meta.bytes);
-            if (meta.bytes && got.length !== meta.bytes) throw new Error('体积不符：' + got.length + ' ≠ ' + meta.bytes);
-            const digest = await sha256Hex(got);
-            if (digest && digest !== meta.sha256) throw new Error('sha256 不符，拒绝加载');
-            bytes = got;
-            state.source = base;
-            break;
-          } catch (err) {
-            fails.push(new URL(url).host + '：' + ((err && err.message) || err));
+    const myGen = generation;
+    let task;
+    task = (async () => {
+      try {
+        await cacheClear;
+        if (myGen !== generation) return false;
+        // 摘要能力先探一下：不行就不要去打镜像站
+        try { await sha256Hex(new Uint8Array(0)); }
+        catch (e) { throw new Error('sha256 不可用，拒绝加载'); }
+        state.status = 'downloading'; state.progress = 0; state.error = ''; state.source = ''; emit();
+        let bytes = await readCache(cacheKey);
+        let fromNet = false;
+        if (bytes) {
+          const badLen = !!(meta.bytes && bytes.length !== meta.bytes);
+          let badHash = false;
+          if (!badLen) {
+            const digest = await sha256Hex(bytes);
+            badHash = digest !== meta.sha256;
+          }
+          if (badLen || badHash) {
+            await purgeCacheEntry(cacheKey);
+            bytes = null;
           }
         }
-        if (!bytes) throw new Error('所有源都失败（' + fails.join('；') + '）');
-        await writeCache(cacheKey, bytes);
-      }
-      const tensors = parseOnnx(bytes);
-      state.model = buildModel(tensors);
-      state.status = 'ready'; state.progress = 1; emit();
-      return true;
-    })()
-      .catch((err) => {
+        if (!bytes) {
+          const fails = [];
+          for (const base of sources) {
+            if (myGen !== generation) return false;
+            const url = base + meta.file;
+            try {
+              const got = await download(url, meta.bytes);
+              if (meta.bytes && got.length !== meta.bytes) throw new Error('体积不符：' + got.length + ' ≠ ' + meta.bytes);
+              const digest = await sha256Hex(got);
+              if (digest !== meta.sha256) throw new Error('sha256 不符，拒绝加载');
+              bytes = got;
+              state.source = base;
+              fromNet = true;
+              break;
+            } catch (err) {
+              let host = url;
+              try { host = new URL(url).host; } catch (e) { /* 非法地址就原文 */ }
+              fails.push(host + '：' + ((err && err.message) || err));
+            }
+          }
+          if (!bytes) throw new Error('所有源都失败（' + fails.join('；') + '）');
+        }
+        let model;
+        try {
+          model = buildModel(parseOnnx(bytes));
+        } catch (err) {
+          await purgeCacheEntry(cacheKey);
+          throw err;
+        }
+        if (myGen !== generation) return false;
+        // 解析通过之后才写入缓存，坏文件不要留给下一次命中
+        if (fromNet) await writeCache(cacheKey, bytes);
+        if (myGen !== generation) return false;
+        state.model = model;
+        state.status = 'ready'; state.progress = 1; emit();
+        return true;
+      } catch (err) {
+        if (myGen !== generation) return false;
         state.status = 'error';
         state.error = (err && err.message) || String(err);
         emit();
         throw err;
-      })
-      .finally(() => { loading = null; });
-    return loading;
+      } finally {
+        if (loading === task) loading = null;
+      }
+    })();
+    loading = task;
+    return task;
   }
 
   // 直接从内存里的 ONNX 字节建模型（测试与本地文件用）
@@ -3155,7 +3298,12 @@ const CSS = String.raw`
 
   function ready() { return state.status === 'ready' && !!state.model; }
   function reset() {
-    state.status = 'idle'; state.progress = 0; state.error = ''; state.model = null; emit();
+    generation++;
+    loading = null;
+    state.status = 'idle'; state.progress = 0; state.error = ''; state.source = ''; state.model = null;
+    cacheClear = purgeCacheStorage();
+    emit();
+    return cacheClear;
   }
 
   // ctx + 候选动作 counts → { index, scores }
@@ -3509,6 +3657,7 @@ function PanelView() {
   const toastTimer = useRef(null)
   const adviceKeyRef = useRef('')
   const adviceTimerRef = useRef(null)
+  const rootRef = useRef(null)
   const st = stRef.current
 
   /* -------- sota 档：DouZero 权重 -------- */
@@ -3524,12 +3673,12 @@ function PanelView() {
     return off
   }, [])
 
-  // 选了 sota 档才去下权重；下载中/已就绪不重复触发
+  // 选了 sota 档、且还是 idle 才去下权重。error 停住，只有用户点重试才再来。
   useEffect(() => {
     if (typeof SOTA === 'undefined') return
     if (tiers.indexOf('sota') < 0) return
     if (SOTA.ready()) { DDZ.setSotaRank(SOTA.rank); return }
-    if (sota.status === 'downloading' || sota.status === 'ready') return
+    if (sota.status !== 'idle') return
     SOTA.load().catch(() => { /* 状态已经通过 onStatus 落到界面 */ })
   }, [tiers, sota.status])
 
@@ -3699,12 +3848,26 @@ function PanelView() {
     }, 30)
   }
 
-  /* 快捷键：空格提示 / 回车出牌 / Esc 取消（在输入框里打字时不拦） */
+  /* 快捷键：空格提示 / 回车出牌 / Esc 取消。
+     只在插件根获得焦点时处理，输入框、contenteditable 和宿主编辑器里不拦。 */
   useEffect(() => {
     if (view !== 'table') return
+    function isTypingTarget(el) {
+      if (!el || typeof el !== 'object') return false
+      const tag = el.tagName || ''
+      if (/^(INPUT|TEXTAREA|SELECT)$/i.test(tag)) return true
+      if (el.isContentEditable) return true
+      if (typeof el.closest !== 'function') return false
+      return !!el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .monaco-editor, .cm-editor, .cm-content, .ProseMirror, [role="textbox"]')
+    }
+    function insidePlugin(el) {
+      return !!(el && typeof el.closest === 'function' && el.closest('.ddz-root'))
+    }
     function onKey(e) {
-      const tag = (e.target && e.target.tagName) || ''
-      if (/^(INPUT|TEXTAREA|SELECT)$/i.test(tag) || e.isComposing) return
+      if (e.isComposing || isTypingTarget(e.target)) return
+      const active = typeof document !== 'undefined' ? document.activeElement : null
+      if (isTypingTarget(active)) return
+      if (!insidePlugin(e.target) && !insidePlugin(active)) return
       if (modal) return
       if (auto) return
       const s = stRef.current
@@ -3832,8 +3995,8 @@ function PanelView() {
         try {
           if (s.last && s.last.seat !== 0) G.applyPass(s, 0)
           else {
-            const h = G.hintList(s, 0)
-            if (h.moves.length) G.applyPlay(s, 0, h.moves[0].cards)
+            const fb = G.fallbackMove(s, 0)
+            if (fb && fb.move) G.applyPlay(s, 0, fb.move.cards)
           }
         } catch { /* 超时兜底失败就停在这 */ }
         setRemain(30)
@@ -3889,7 +4052,14 @@ function PanelView() {
         sota.status === 'error'
           ? h('button', {
             className: 'ddz-btn ddz-btn--ghost',
-            onClick: () => { SOTA.reset(); SOTA.load().catch(() => { /* 状态回界面 */ }) }
+            onClick: () => {
+              const again = () => { SOTA.load().catch(() => { /* 状态回界面 */ }) }
+              try {
+                const cleared = SOTA.reset()
+                if (cleared && typeof cleared.then === 'function') cleared.then(again, again)
+                else again()
+              } catch (e) { again() }
+            }
           }, T.sotaRetry)
           : null,
         sota.status === 'idle'
@@ -4148,7 +4318,20 @@ function PanelView() {
     return null
   }
 
-  return h('div', { className: 'ddz-root' },
+  return h('div', {
+    className: 'ddz-root',
+    tabIndex: -1,
+    ref: rootRef,
+    onPointerDown: (e) => {
+      const t = e && e.target
+      if (!t || typeof t.closest !== 'function') return
+      if (t.closest('input, textarea, select, button, a, [contenteditable]')) return
+      const root = rootRef.current
+      if (!root || typeof root.focus !== 'function') return
+      if (typeof document !== 'undefined' && document.activeElement === root) return
+      try { root.focus({ preventScroll: true }) } catch (err) { try { root.focus() } catch (e2) { /* ignore */ } }
+    },
+  },
     setupScreen(),
     tableScreen(),
     toastEl(),

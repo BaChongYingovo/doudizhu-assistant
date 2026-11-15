@@ -1,0 +1,23 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: npm test
+        working-directory: plugin/dsh-doudizhu-game
+        run: npm test
+      - name: client.js matches build.mjs
+        working-directory: plugin/dsh-doudizhu-game
+        run: |
+          cp client.js /tmp/doudizhu-client.js
+          node build.mjs
+          diff -u /tmp/doudizhu-client.js client.js
